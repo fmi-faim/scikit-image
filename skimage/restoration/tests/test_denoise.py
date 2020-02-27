@@ -4,8 +4,8 @@ import itertools
 import numpy as np
 import pytest
 import pywt
-from numpy.testing import (assert_, assert_almost_equal, assert_equal,
-                           assert_warns)
+from numpy.testing import (assert_, assert_array_almost_equal,
+                           assert_array_equal, assert_warns)
 
 from skimage import color, data, img_as_float, restoration
 from skimage._shared._warnings import expected_warnings
@@ -73,7 +73,7 @@ def test_denoise_tv_chambolle_multichannel(channel_axis):
     denoised = restoration.denoise_tv_chambolle(img, weight=0.1,
                                                 channel_axis=channel_axis)
     _at = functools.partial(slice_at_axis, axis=channel_axis % img.ndim)
-    assert_equal(denoised[_at(0)], denoised0)
+    assert_array_equal(denoised[_at(0)], denoised0)
 
     # tile astronaut subset to generate 3D+channels data
     astro3 = np.tile(astro[:64, :64, np.newaxis, :], [1, 1, 2, 1])
@@ -86,7 +86,7 @@ def test_denoise_tv_chambolle_multichannel(channel_axis):
                                                 channel_axis=channel_axis)
     _at = functools.partial(slice_at_axis,
                             axis=channel_axis % astro3.ndim)
-    assert_equal(denoised[_at(0)], denoised0)
+    assert_array_equal(denoised[_at(0)], denoised0)
 
 
 def test_denoise_tv_chambolle_multichannel_deprecation():
@@ -101,7 +101,7 @@ def test_denoise_tv_chambolle_multichannel_deprecation():
         denoised = restoration.denoise_tv_chambolle(astro, 0.1, 2e-4, 200,
                                                     True)
 
-    assert_equal(denoised[..., 0], denoised0)
+    assert_array_equal(denoised[..., 0], denoised0)
 
 
 def test_denoise_tv_chambolle_float_result_range():
@@ -216,7 +216,7 @@ def test_denoise_tv_bregman_3d_multichannel(channel_axis):
                                               channel_axis=channel_axis)
     _at = functools.partial(slice_at_axis,
                             axis=channel_axis % img_astro.ndim)
-    assert_equal(denoised0, denoised[_at(0)])
+    assert_array_equal(denoised0, denoised[_at(0)])
 
 
 def test_denoise_tv_bregman_3d_multichannel_deprecation():
@@ -226,7 +226,7 @@ def test_denoise_tv_bregman_3d_multichannel_deprecation():
         denoised = restoration.denoise_tv_bregman(img_astro, weight=60.0,
                                                   multichannel=True)
 
-    assert_equal(denoised0, denoised[..., 0])
+    assert_array_equal(denoised0, denoised[..., 0])
 
 
 def test_denoise_tv_bregman_max_iter_deprecation():
@@ -243,7 +243,7 @@ def test_denoise_tv_bregman_multichannel():
     out1 = restoration.denoise_tv_bregman(img, weight=60.0)
     out2 = restoration.denoise_tv_bregman(img, weight=60.0, channel_axis=-1)
 
-    assert_equal(out1, out2)
+    assert_array_equal(out1, out2)
 
 
 def test_denoise_bilateral_2d():
@@ -272,7 +272,7 @@ def test_denoise_bilateral_pad():
     condition_padding = np.count_nonzero(np.isclose(img_bil,
                                                     0,
                                                     atol=0.001))
-    assert_equal(condition_padding, 0)
+    assert_array_equal(condition_padding, 0)
 
 
 @pytest.mark.parametrize('dtype', [np.float32, np.double])
@@ -300,12 +300,14 @@ def test_denoise_bregman_types(dtype):
 
 def test_denoise_bilateral_zeros():
     img = np.zeros((10, 10))
-    assert_equal(img, restoration.denoise_bilateral(img, channel_axis=None))
+    assert_array_equal(img,
+                       restoration.denoise_bilateral(img, channel_axis=None))
 
 
 def test_denoise_bilateral_constant():
     img = np.ones((10, 10)) * 5
-    assert_equal(img, restoration.denoise_bilateral(img, channel_axis=None))
+    assert_array_equal(img,
+                       restoration.denoise_bilateral(img, channel_axis=None))
 
 
 @pytest.mark.parametrize('channel_axis', [0, 1, -1])
@@ -362,7 +364,7 @@ def test_denoise_bilateral_3d_multichannel():
     with expected_warnings(["grayscale"]):
         result = restoration.denoise_bilateral(img, channel_axis=-1)
 
-    assert_equal(result, img)
+    assert_array_equal(result, img)
 
 
 def test_denoise_bilateral_multidimensional():
@@ -379,7 +381,7 @@ def test_denoise_bilateral_nan():
     # Python 3.5 will not trigger a warning.
     with expected_warnings([r'invalid|\A\Z']):
         out = restoration.denoise_bilateral(img, channel_axis=None)
-    assert_equal(img, out)
+    assert_array_equal(img, out)
 
 
 @pytest.mark.parametrize('fast_mode', [False, True])
@@ -438,6 +440,35 @@ def test_denoise_nl_means_2d_multichannel(fast_mode, n_channels, dtype):
         assert_(psnr_denoised > psnr_noisy)
 
 
+@pytest.mark.parametrize('fast_mode', [False, True])
+@pytest.mark.parametrize('channel_axis', [None, -1])
+def test_denoise_nl_means_2d_patch_distance(channel_axis, fast_mode):
+    # reduce image size because nl means is slow
+    if channel_axis is None:
+        img = np.copy(astro_gray[:50, :50])
+    else:
+        img = np.copy(astro[:50, :50])
+
+    # add some random noise
+    sigma = 0.1
+    imgn = img + sigma * np.random.standard_normal(img.shape)
+
+    kwargs = dict(patch_size=3, h=0.75 * sigma, fast_mode=fast_mode,
+                  channel_axis=channel_axis, sigma=sigma)
+
+    # scalar and sequence patch distance give the same result
+    denoised = restoration.denoise_nl_means(imgn, patch_distance=3, **kwargs)
+    denoised2 = restoration.denoise_nl_means(imgn, patch_distance=(3, 3),
+                                             **kwargs)
+    assert_array_almost_equal(denoised, denoised2)
+
+    for invalid_patch_distance in [(3,), (3, 3, 3)]:
+        with pytest.raises(ValueError):
+            restoration.denoise_nl_means(imgn,
+                                         patch_distance=invalid_patch_distance,
+                                         **kwargs)
+
+
 def test_denoise_nl_means_2d_multichannel_deprecated():
     # reduce image size because nl means is slow
     img = np.copy(astro[:50, :50])
@@ -479,6 +510,43 @@ def test_denoise_nl_means_3d(fast_mode, dtype):
                                                 channel_axis=None, sigma=s)
         # make sure noise is reduced
         assert_(peak_signal_noise_ratio(img, denoised) > psnr_noisy)
+
+
+@pytest.mark.parametrize('fast_mode', [False, True])
+@pytest.mark.parametrize('channel_axis', [None, -1])
+def test_denoise_nl_means_3d_patch_distance(channel_axis, fast_mode):
+    # reduce image size because nl means is slow
+    if channel_axis is None:
+        img = np.zeros((12, 12, 8))
+        img[5:-5, 5:-5, 2:-2] = 1.
+    else:
+        img = np.zeros((12, 12, 8, 3))
+        img[5:-5, 5:-5, 2:-2, :] = 1.
+
+    # add some random noise
+    sigma = 0.1
+    imgn = img + sigma * np.random.standard_normal(img.shape)
+
+    kwargs = dict(patch_size=3, h=0.75 * sigma, fast_mode=fast_mode,
+                  channel_axis=channel_axis, sigma=sigma)
+
+    if not fast_mode and channel_axis is not None:
+        # multichannel 3D unimplemented for fast_mode
+        with pytest.raises(NotImplementedError):
+            restoration.denoise_nl_means(imgn, patch_distance=2, **kwargs)
+        return
+
+    # scalar and sequence patch distance give the same result
+    denoised = restoration.denoise_nl_means(imgn, patch_distance=2, **kwargs)
+    denoised2 = restoration.denoise_nl_means(imgn, patch_distance=(2, 2, 2),
+                                             **kwargs)
+    assert_array_almost_equal(denoised, denoised2)
+
+    for invalid_patch_distance in [(3,), (3, 3), (3, 3, 3, 3)]:
+        with pytest.raises(ValueError):
+            restoration.denoise_nl_means(imgn,
+                                         patch_distance=invalid_patch_distance,
+                                         **kwargs)
 
 
 @pytest.mark.parametrize('fast_mode', [False, True])
@@ -553,6 +621,34 @@ def test_denoise_nl_means_4d():
                                                  **nlmeans_kwargs)
     psnr_3dmc = peak_signal_noise_ratio(img, denoised_3dmc, data_range=1.)
     assert_(psnr_3dmc > psnr_3d)
+
+
+@pytest.mark.parametrize('channel_axis', [None, -1])
+def test_denoise_nl_means_4d_patch_distance(channel_axis):
+    # reduce image size because nl means is slow
+    img = np.zeros((12, 12, 8, 4))
+    img[5:-5, 5:-5, 2:-2, 1:-1] = 1.
+    if channel_axis is not None:
+        img = np.stack((img,) * 3, axis=-1)
+
+    # add some random noise
+    sigma = 0.1
+    imgn = img + sigma * np.random.standard_normal(img.shape)
+
+    kwargs = dict(patch_size=3, h=0.75 * sigma, fast_mode=True,
+                  channel_axis=channel_axis, sigma=sigma)
+
+    # scalar and sequence patch distance give the same result
+    denoised = restoration.denoise_nl_means(imgn, patch_distance=1, **kwargs)
+    denoised2 = restoration.denoise_nl_means(imgn, patch_distance=(1, 1, 1, 1),
+                                             **kwargs)
+    assert_array_almost_equal(denoised, denoised2)
+
+    for invalid_patch_distance in [(3,), (3, 3), (3, 3, 3), (3, 3, 3, 3, 3)]:
+        with pytest.raises(ValueError):
+            restoration.denoise_nl_means(imgn,
+                                         patch_distance=invalid_patch_distance,
+                                         **kwargs)
 
 
 def test_denoise_nl_means_4d_multichannel():
@@ -949,7 +1045,7 @@ def test_estimate_sigma_gray():
     img += sigma * rstate.standard_normal(img.shape)
 
     sigma_est = restoration.estimate_sigma(img, channel_axis=None)
-    assert_almost_equal(sigma, sigma_est, decimal=2)
+    assert_array_almost_equal(sigma, sigma_est, decimal=2)
 
 
 def test_estimate_sigma_masked_image():
@@ -966,7 +1062,7 @@ def test_estimate_sigma_masked_image():
     img[center_roi] = sigma * rstate.standard_normal(img[center_roi].shape)
 
     sigma_est = restoration.estimate_sigma(img, channel_axis=None)
-    assert_almost_equal(sigma, sigma_est, decimal=1)
+    assert_array_almost_equal(sigma, sigma_est, decimal=1)
 
 
 @pytest.mark.parametrize('channel_axis', [0, 1, 2, -1])
@@ -981,12 +1077,12 @@ def test_estimate_sigma_color(channel_axis):
 
     sigma_est = restoration.estimate_sigma(img, channel_axis=channel_axis,
                                            average_sigmas=True)
-    assert_almost_equal(sigma, sigma_est, decimal=2)
+    assert_array_almost_equal(sigma, sigma_est, decimal=2)
 
     sigma_list = restoration.estimate_sigma(img, channel_axis=channel_axis,
                                             average_sigmas=False)
-    assert_equal(len(sigma_list), img.shape[channel_axis])
-    assert_almost_equal(sigma_list[0], sigma_est, decimal=2)
+    assert_array_equal(len(sigma_list), img.shape[channel_axis])
+    assert_array_almost_equal(sigma_list[0], sigma_est, decimal=2)
 
     if channel_axis % img.ndim == 2:
         # default channel_axis=None should raise a warning about last axis size
@@ -1004,12 +1100,12 @@ def test_estimate_sigma_color_deprecated_multichannel():
     with expected_warnings(["`multichannel` is a deprecated argument"]):
         sigma_est = restoration.estimate_sigma(img, multichannel=True,
                                                average_sigmas=True)
-    assert_almost_equal(sigma, sigma_est, decimal=2)
+    assert_array_almost_equal(sigma, sigma_est, decimal=2)
 
     # providing multichannel argument positionally also warns
     with expected_warnings(["Providing the `multichannel` argument"]):
         sigma_est = restoration.estimate_sigma(img, True, True)
-    assert_almost_equal(sigma, sigma_est, decimal=2)
+    assert_array_almost_equal(sigma, sigma_est, decimal=2)
 
 
 @pytest.mark.parametrize('rescale_sigma', [True, False])
@@ -1086,7 +1182,7 @@ def test_cycle_spinning_multichannel(rescale_sigma):
                                            func_kw=func_kw,
                                            channel_axis=channel_axis)
             dn = denoise_func(noisy, **func_kw)
-        assert_equal(dn, dn_cc)
+        assert_array_equal(dn, dn_cc)
 
         # denoising with cycle spinning will give better PSNR than without
         for max_shifts in valid_shifts:
@@ -1145,8 +1241,8 @@ def test_cycle_spinning_num_workers():
         dn_cc3 = restoration.cycle_spin(noisy, denoise_func, max_shifts=1,
                                         func_kw=func_kw, channel_axis=None,
                                         num_workers=None)
-    assert_almost_equal(dn_cc1, dn_cc2)
-    assert_almost_equal(dn_cc1, dn_cc3)
+    assert_array_almost_equal(dn_cc1, dn_cc2)
+    assert_array_almost_equal(dn_cc1, dn_cc3)
 
 
 def test_cycle_spinning_num_workers_deprecated_multichannel():
@@ -1175,7 +1271,7 @@ def test_cycle_spinning_num_workers_deprecated_multichannel():
         dn_cc2 = restoration.cycle_spin(noisy, denoise_func, max_shifts=1,
                                         func_kw=func_kw, multichannel=False,
                                         num_workers=2)
-    assert_almost_equal(dn_cc1, dn_cc2)
+    assert_array_almost_equal(dn_cc1, dn_cc2)
 
     # providing multichannel argument positionally also warns
     mc_warn_str = "Providing the `multichannel` argument"

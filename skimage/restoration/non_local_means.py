@@ -26,8 +26,10 @@ def denoise_nl_means(image, patch_size=7, patch_distance=11, h=0.1,
         or RGB (for 2D images only, see ``multichannel`` parameter).
     patch_size : int, optional
         Size of patches used for denoising.
-    patch_distance : int, optional
+    patch_distance : int or sequence of int, optional
         Maximal distance in pixels where to search patches used for denoising.
+        Can be a sequence with a per-axis distance for the (spatial) axes. If
+        scalar, the same distance is used along all axes.
     h : float, optional
         Cut-off distance (in gray levels). The higher h, the more permissive
         one is in accepting patches. A higher h results in a smoother image,
@@ -170,6 +172,13 @@ def denoise_nl_means(image, patch_size=7, patch_distance=11, h=0.1,
     image = convert_to_float(image, preserve_range)
     if not image.flags.c_contiguous:
         image = np.ascontiguousarray(image)
+
+    if np.isscalar(patch_distance):
+        patch_distance = [patch_distance, ] * ndim_no_channel
+    elif len(patch_distance) != ndim_no_channel:
+        raise ValueError(
+            "patch size must equal the number of non-channel dimensions")
+    patch_distance = np.asarray(patch_distance, dtype=np.intp)
 
     kwargs = dict(s=patch_size, d=patch_distance, h=h, var=sigma * sigma)
     if ndim_no_channel == 2:

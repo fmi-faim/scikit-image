@@ -1,6 +1,7 @@
+from ._multimethods import gabor_kernel, gabor
+from ._multimethods import (gaussian, _guess_spatial_dimensions,
+                            difference_of_gaussians)
 from .lpi_filter import inverse, wiener, LPIFilter2D
-from ._gaussian import (gaussian, _guess_spatial_dimensions,
-                        difference_of_gaussians)
 from .edges import (sobel, sobel_h, sobel_v,
                     scharr, scharr_h, scharr_v,
                     prewitt, prewitt_h, prewitt_v,
@@ -8,7 +9,6 @@ from .edges import (sobel, sobel_h, sobel_v,
                     laplace,
                     farid, farid_h, farid_v)
 from ._rank_order import rank_order
-from ._gabor import gabor_kernel, gabor
 from .thresholding import (threshold_local, threshold_otsu, threshold_yen,
                            threshold_isodata, threshold_li, threshold_minimum,
                            threshold_mean, threshold_triangle,
@@ -21,6 +21,8 @@ from ._median import median
 from ._sparse import correlate_sparse
 from ._unsharp_mask import unsharp_mask
 from ._window import window
+from ._backend import (set_backend, skip_backend, set_global_backend,
+                       register_backend)
 
 
 __all__ = ['inverse',

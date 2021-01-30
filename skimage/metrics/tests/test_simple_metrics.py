@@ -38,10 +38,13 @@ def test_PSNR_vs_IPOL():
     assert_almost_equal(p, p_IPOL, decimal=4)
 
 
-def test_PSNR_float():
+@testing.parametrize('dtype', [np.float32, np.float64])
+def test_PSNR_float(dtype):
     p_uint8 = peak_signal_noise_ratio(cam, cam_noisy)
-    p_float64 = peak_signal_noise_ratio(cam / 255., cam_noisy / 255.,
-                                        data_range=1)
+    camf = (cam / 255.).astype(dtype, copy=False)
+    camf_noisy = (cam_noisy / 255.).astype(dtype, copy=False)
+    p_float64 = peak_signal_noise_ratio(camf, camf_noisy, data_range=1)
+    assert p_float64.dtype == np.float64
     assert_almost_equal(p_uint8, p_float64, decimal=5)
 
     # mixed precision inputs
@@ -62,11 +65,13 @@ def test_PSNR_errors():
         peak_signal_noise_ratio(cam, cam[:-1, :])
 
 
-def test_NRMSE():
-    x = np.ones(4)
-    y = np.asarray([0., 2., 2., 2.])
-    assert_equal(normalized_root_mse(y, x, normalization='mean'),
-                 1 / np.mean(y))
+@testing.parametrize('dtype', [np.float32, np.float64])
+def test_NRMSE(dtype):
+    x = np.ones(4, dtype=dtype)
+    y = np.asarray([0., 2., 2., 2.], dtype=dtype)
+    nrmse = normalized_root_mse(y, x, normalization='mean')
+    assert nrmse.dtype == np.float64
+    assert_equal(nrmse, 1 / np.mean(y))
     assert_equal(normalized_root_mse(y, x, normalization='euclidean'),
                  1 / np.sqrt(3))
     assert_equal(normalized_root_mse(y, x, normalization='min-max'),
@@ -107,14 +112,13 @@ def test_nmi_different_sizes():
     assert normalized_mutual_information(cam[:, :400], cam[:400, :]) > 1
 
 
-def test_nmi_random():
+@testing.parametrize('dtype', [np.float32, np.float64])
+def test_nmi_random(dtype):
     random1 = np.random.random((100, 100))
     random2 = np.random.random((100, 100))
-    assert_almost_equal(
-        normalized_mutual_information(random1, random2, bins=10),
-        1,
-        decimal=2,
-    )
+    nmi = normalized_mutual_information(random1, random2, bins=10)
+    assert nmi.dtype == np.float64
+    assert_almost_equal(nmi, 1, decimal=2)
 
 
 def test_nmi_random_3d():

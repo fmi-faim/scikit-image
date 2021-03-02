@@ -419,3 +419,5 @@ for ax, column_label in zip(
 for ax, row_index in zip(axs[:, 0], range(len(axs))):
     row_label = f"Dimension {row_index}"
     ax.set_ylabel(row_label, rotation="vertical")
+
+plt.show()

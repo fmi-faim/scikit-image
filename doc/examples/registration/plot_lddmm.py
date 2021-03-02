@@ -66,6 +66,13 @@ moving_image = np.flip(
     moving_image, 2
 )  # This saggittal flip corrects inversion.
 
+# clip extremely bright outliers to the 99.9th percentile value
+moving_image = np.clip(
+    moving_image, 0, np.percentile(moving_image, q=99.9)
+)
+reference_image = np.clip(
+    reference_image, 0, np.percentile(reference_image, q=99.9)
+)
 
 # Specify spacings.
 reference_image_spacing = np.array([50, 50, 50])

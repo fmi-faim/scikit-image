@@ -3,7 +3,7 @@ import functools
 # from numpy import ndarray
 from uarray import generate_multimethod, Dispatchable
 from uarray import all_of_type, create_multimethod
-from unumpy import dtype, ndarray, mark_dtype, mark_non_coercible
+from unumpy import dtype, ndarray, mark_dtype  # , mark_non_coercible
 
 import skimage.filters
 from skimage.filters import _api
@@ -44,14 +44,13 @@ def _identity_arg_replacer(args, kwargs, arrays):
 
 def _image_arg_replacer(args, kwargs, dispatchables):
     """
-    uarray argument replacer to replace the transform input array (``x``)
+    uarray argument replacer to replace the input image (``image``)
     """
     if len(args) > 0:
         return (dispatchables[0],) + args[1:], kwargs
     kw = kwargs.copy()
     kw['image'] = dispatchables[0]
     return args, kw
-
 
 
 def _dispatch_identity(func):
@@ -70,6 +69,8 @@ def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
              multichannel=None, preserve_range=False, truncate=4.0):
     return (Dispatchable(image, np.ndarray),)
 """
+
+""" _gaussian.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
@@ -95,6 +96,8 @@ def _guess_spatial_dimensions(image):
 _guess_spatial_dimensions.__doc__ = _api._guess_spatial_dimensions.__doc__
 
 
+""" _gabor.py multimethods """
+
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
 def gabor(image, frequency, theta=0, bandwidth=1, sigma_x=None,
@@ -108,3 +111,41 @@ def gabor_kernel(frequency, theta=0, bandwidth=1, sigma_x=None, sigma_y=None,
                  n_stds=3, offset=0):
     return
 gabor_kernel.__doc__ = _api.gabor_kernel.__doc__
+
+
+""" _median.py multimethods """
+
+@create_skimage_filters(_image_arg_replacer)
+@all_of_type(ndarray)
+def median(image, selem=None, out=None, mode='nearest', cval=0.0,
+           behavior='ndimage'):
+    return (image,)
+median.__doc__ = _api.median.__doc__
+
+
+""" _rank_order.py multimethods """
+
+@create_skimage_filters(_identity_arg_replacer)
+def rank_order(image):
+    return
+rank_order.__doc__ = _api.rank_order.__doc__
+
+
+""" _sparse.py multimethods """
+
+@create_skimage_filters(_image_arg_replacer)
+@all_of_type(ndarray)
+def correlate_sparse(image, kernel, mode='reflect'):
+    return (image,)
+correlate_sparse.__doc__ = _api.correlate_sparse.__doc__
+
+from .._shared import utils
+
+""" _unsharp_mask.py multimethods """
+
+@create_skimage_filters(_image_arg_replacer)
+@all_of_type(ndarray)
+def unsharp_mask(image, radius=1.0, amount=1.0, multichannel=False,
+                 preserve_range=False, *, channel_axis=None):
+    return (image,)
+unsharp_mask.__doc__ = _api.unsharp_mask.__doc__

@@ -1,8 +1,8 @@
 import pytest
 
 import numpy as np
-from skimage.filters._gaussian import (gaussian, _guess_spatial_dimensions,
-                                       difference_of_gaussians)
+from skimage.filters import (gaussian, difference_of_gaussians)
+from skimage.filters._gaussian import _guess_spatial_dimensions
 from skimage._shared import testing
 from skimage._shared._warnings import expected_warnings
 

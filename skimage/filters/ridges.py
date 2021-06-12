@@ -15,7 +15,6 @@ import numpy as np
 
 from ..util import img_as_float, invert
 from .._shared.utils import check_nD
-from ..feature.corner import hessian_matrix, hessian_matrix_eigvals
 
 
 def _divide_nonzero(array1, array2, cval=1e-10):
@@ -136,6 +135,7 @@ def compute_hessian_eigenvalues(image, sigma, sorting='none',
         Array with (sorted) eigenvalues of Hessian eigenvalues for each pixel
         of the input image.
     """
+    from ..feature.corner import hessian_matrix, hessian_matrix_eigvals
 
     # Convert image to float
     image = img_as_float(image)

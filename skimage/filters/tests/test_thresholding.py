@@ -8,19 +8,19 @@ from skimage.color import rgb2gray
 from skimage.draw import disk
 from skimage._shared._warnings import expected_warnings
 from skimage.exposure import histogram
-from skimage.filters.thresholding import (threshold_local,
-                                          threshold_otsu,
-                                          threshold_li,
-                                          threshold_yen,
-                                          threshold_isodata,
-                                          threshold_niblack,
-                                          threshold_sauvola,
-                                          threshold_mean,
-                                          threshold_triangle,
-                                          threshold_minimum,
-                                          threshold_multiotsu,
-                                          try_all_threshold,
-                                          _mean_std,
+from skimage.filters import (threshold_local,
+                             threshold_otsu,
+                             threshold_li,
+                             threshold_yen,
+                             threshold_isodata,
+                             threshold_niblack,
+                             threshold_sauvola,
+                             threshold_mean,
+                             threshold_triangle,
+                             threshold_minimum,
+                             threshold_multiotsu,
+                             try_all_threshold)
+from skimage.filters.thresholding import (_mean_std,
                                           _cross_entropy)
 from skimage.filters._multiotsu import (_get_multiotsu_thresh_indices_lut,
                                         _get_multiotsu_thresh_indices)

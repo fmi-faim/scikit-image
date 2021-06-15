@@ -12,7 +12,9 @@ from skimage.filters import _api
 #mark_dtype = mark_as(dtype)
 #mark_non_coercible = lambda x: Dispatchable(x, ndarray, coercible=False)
 
-create_skimage_filters = functools.partial(create_multimethod, domain="numpy.skimage.filters")
+create_skimage_filters = functools.partial(
+    create_multimethod, domain="numpy.skimage.filters"
+)
 
 
 # def _dtype_argreplacer(args, kwargs, dispatchables):

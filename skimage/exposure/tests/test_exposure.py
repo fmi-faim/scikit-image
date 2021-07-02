@@ -384,7 +384,7 @@ def test_adapthist_color(channel_axis):
 
     _img = np.moveaxis(img, source=-1, destination=channel_axis)
     adapted = exposure.equalize_adapthist(_img, clip_limit=0.01,
-                                          channel_axis=channel_axis)
+                                          rgb_axis=channel_axis)
     adapted = np.moveaxis(adapted, source=channel_axis, destination=-1)
 
     assert adapted.min() == 0

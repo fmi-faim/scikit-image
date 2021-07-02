@@ -27,7 +27,7 @@ NR_OF_GRAY = 2 ** 14  # number of grayscale levels to use in CLAHE algorithm
 
 @adapt_rgb(hsv_value)
 def equalize_adapthist(image, kernel_size=None,
-                       clip_limit=0.01, nbins=256, channel_axis=-1):
+                       clip_limit=0.01, nbins=256, rgb_axis=-1):
     """Contrast Limited Adaptive Histogram Equalization (CLAHE).
 
     An algorithm for local contrast enhancement, that uses histograms computed
@@ -49,7 +49,7 @@ def equalize_adapthist(image, kernel_size=None,
         contrast).
     nbins : int, optional
         Number of gray bins for histogram ("data range").
-    channel_axis : int, optional
+    rgb_axis : int, optional
         When the image is a 2D RGB or RGBA image, this parameter specifies
         which axis corresponds to the color `channels`. Otherwise, this
         parameter is ignored.

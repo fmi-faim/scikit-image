@@ -1,3 +1,4 @@
+# distutils: language = c++
 #cython: cdivision=True
 #cython: boundscheck=False
 #cython: nonecheck=False
@@ -6,8 +7,10 @@ import math
 import numpy as np
 
 cimport numpy as cnp
-from libc.math cimport sqrt, sin, cos, floor, ceil, fabs
 from .._shared.geometry cimport point_in_polygon
+from libc.math cimport sqrt, sin, cos, floor, ceil, fabs
+from libcpp.vector cimport vector
+
 
 cnp.import_array()
 
@@ -194,7 +197,6 @@ def _line_aa(Py_ssize_t r0, Py_ssize_t c0, Py_ssize_t r1, Py_ssize_t c1):
 
 def _polygon(r, c, shape):
     """Generate coordinates of pixels within polygon.
-
     Parameters
     ----------
     r : (N,) ndarray
@@ -205,7 +207,6 @@ def _polygon(r, c, shape):
         Image shape which is used to determine the maximum extent of output
         pixel coordinates. This is useful for polygons that exceed the image
         size. If None, the full extent of the polygon is used.
-
     Returns
     -------
     rr, cc : ndarray of int
@@ -230,19 +231,22 @@ def _polygon(r, c, shape):
     # make contiguous arrays for r, c coordinates
     cdef cnp.float64_t[::1] rptr = np.ascontiguousarray(r, 'float64')
     cdef cnp.float64_t[::1] cptr = np.ascontiguousarray(c, 'float64')
-    cdef cnp.float64_t r_i, c_i
+    cdef Py_ssize_t r_i, c_i
 
     # output coordinate arrays
-    rr = list()
-    cc = list()
+    cdef vector[Py_ssize_t] rr
+    cdef vector[Py_ssize_t] cc
 
     for r_i in range(minr, maxr+1):
         for c_i in range(minc, maxc+1):
-            if point_in_polygon(cptr, rptr, c_i, r_i):
-                rr.append(r_i)
-                cc.append(c_i)
+            if point_in_polygon(cptr, rptr, <double>c_i, <double>r_i):
+                rr.push_back(r_i)
+                cc.push_back(c_i)
 
-    return np.array(rr, dtype=np.intp), np.array(cc, dtype=np.intp)
+    cdef Py_ssize_t[::1] rr_ = <Py_ssize_t [:rr.size()]>rr.data()
+    cdef Py_ssize_t[::1] cc_ = <Py_ssize_t [:cc.size()]>cc.data()
+
+    return np.asarray(rr_), np.asarray(cc_)
 
 
 def _circle_perimeter(Py_ssize_t r_o, Py_ssize_t c_o, Py_ssize_t radius,

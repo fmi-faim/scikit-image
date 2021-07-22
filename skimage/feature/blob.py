@@ -214,6 +214,76 @@ def _format_exclude_border(img_ndim, exclude_border):
         )
 
 
+def scale_space_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6,
+                    sigma_axis=-1):
+    """Finds the difference of Gaussians of the given image.
+
+    Parameters
+    ----------
+    image : ndarray
+        Input grayscale image.
+    min_sigma : scalar or sequence of scalars, optional
+        The minimum standard deviation for Gaussian kernel. The standard
+        deviations of the Gaussian filter are given for each axis as a
+        sequence, or as a single number, in which case it is equal for all
+        axes.
+    max_sigma : scalar or sequence of scalars, optional
+        The maximum standard deviation for Gaussian kernel. The standard
+        deviations of the Gaussian filter are given for each axis as a
+        sequence, or as a single number, in which case it is equal for all
+        axes.
+    sigma_ratio : float, optional
+        The ratio between the standard deviation of Gaussian Kernels used for
+        computing the Difference of Gaussians.
+    sigma_axis : float, optional
+        The (new) axis along which to stack the scale space images.
+
+    Returns
+    -------
+    image_cube : ndarray
+        The Difference of Gaussians of the image. Will have dimension
+        ``(image.ndim + 1)`` with the extra dimension along `sigma_axis`
+        containing images at each smoothing value in `sigma_list`.
+    sigma_list : ndarray
+        The list of sigmas used during generation of `image_cube`.
+        It will have length 1 longer than `image_cube.shape[-1]` since
+        `image_cube` is formed from the differences of adjacent sigmas.
+    """
+    image = img_as_float(image)
+    float_dtype = _supported_float_type(image.dtype)
+    image = image.astype(float_dtype, copy=False)
+
+    # Gaussian filter requires that sequence-type sigmas have same
+    # dimensionality as image. This broadcasts scalar kernels
+    if np.isscalar(max_sigma):
+        max_sigma = np.full(image.ndim, max_sigma, dtype=float_dtype)
+    if np.isscalar(min_sigma):
+        min_sigma = np.full(image.ndim, min_sigma, dtype=float_dtype)
+
+    # Convert sequence types to array
+    min_sigma = np.asarray(min_sigma, dtype=float_dtype)
+    max_sigma = np.asarray(max_sigma, dtype=float_dtype)
+
+    # k such that min_sigma*(sigma_ratio**k) > max_sigma
+    k = int(np.mean(np.log(max_sigma / min_sigma) / np.log(sigma_ratio) + 1))
+
+    # a geometric progression of standard deviations for gaussian kernels
+    sigma_list = np.array([min_sigma * (sigma_ratio ** i)
+                           for i in range(k + 1)])
+
+    gaussian_images = [gaussian_filter(image, s) for s in sigma_list]
+
+    # computing difference between two successive Gaussian blurred images
+    # to obtain an approximation of the scale invariant Laplacian of the
+    # Gaussian operator
+    dog_images = [
+        (gaussian_images[i] - gaussian_images[i + 1]) for i in range(k)
+    ]
+    image_cube = np.stack(dog_images, axis=sigma_axis)
+
+    return image_cube, sigma_list
+
+
 def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
              overlap=.5, *, exclude_border=False):
     r"""Finds blobs in the given grayscale image.
@@ -322,34 +392,8 @@ def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
     # if both min and max sigma are scalar, function returns only one sigma
     scalar_sigma = np.isscalar(max_sigma) and np.isscalar(min_sigma)
 
-    # Gaussian filter requires that sequence-type sigmas have same
-    # dimensionality as image. This broadcasts scalar kernels
-    if np.isscalar(max_sigma):
-        max_sigma = np.full(image.ndim, max_sigma, dtype=float_dtype)
-    if np.isscalar(min_sigma):
-        min_sigma = np.full(image.ndim, min_sigma, dtype=float_dtype)
-
-    # Convert sequence types to array
-    min_sigma = np.asarray(min_sigma, dtype=float_dtype)
-    max_sigma = np.asarray(max_sigma, dtype=float_dtype)
-
-    # k such that min_sigma*(sigma_ratio**k) > max_sigma
-    k = int(np.mean(np.log(max_sigma / min_sigma) / np.log(sigma_ratio) + 1))
-
-    # a geometric progression of standard deviations for gaussian kernels
-    sigma_list = np.array([min_sigma * (sigma_ratio ** i)
-                           for i in range(k + 1)])
-
-    gaussian_images = [gaussian_filter(image, s) for s in sigma_list]
-
-    # computing difference between two successive Gaussian blurred images
-    # to obtain an approximation of the scale invariant Laplacian of the
-    # Gaussian operator
-    dog_images = [
-        (gaussian_images[i] - gaussian_images[i + 1]) for i in range(k)
-    ]
-
-    image_cube = np.stack(dog_images, axis=-1)
+    image_cube, sigma_list = scale_space_dog(image, min_sigma, max_sigma,
+                                             sigma_ratio, sigma_axis=-1)
 
     exclude_border = _format_exclude_border(image.ndim, exclude_border)
     local_maxima = peak_local_max(
@@ -381,6 +425,74 @@ def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
     sigma_dim = sigmas_of_peaks.shape[1]
 
     return _prune_blobs(lm, overlap, sigma_dim=sigma_dim)
+
+
+def scale_space_log(image, min_sigma=1, max_sigma=50, num_sigma=10,
+                    log_scale=False, sigma_axis=-1):
+    """Finds the Laplacian of Gaussian of the given image.
+
+    Parameters
+    ----------
+    image : ndarray
+        Input grayscale image.
+    min_sigma : scalar or sequence of scalars, optional
+        The minimum standard deviation for Gaussian kernel. The standard
+        deviations of the Gaussian filter are given for each axis as a
+        sequence, or as a single number, in which case it is equal for all
+        axes.
+    max_sigma : scalar or sequence of scalars, optional
+        The maximum standard deviation for Gaussian kernel. The standard
+        deviations of the Gaussian filter are given for each axis as a
+        sequence, or as a single number, in which case it is equal for all
+        axes.
+    num_sigma : int, optional
+        The number of intermediate values of standard deviations to consider
+        between `min_sigma` and `max_sigma`.
+    log_scale : bool, optional
+        If set intermediate values of standard deviations are interpolated
+        using a logarithmic scale to the base `10`. If not, linear
+        interpolation is used.
+    sigma_axis : float, optional
+        The (new) axis along which to stack the scale space images.
+
+    Returns
+    -------
+    image_cube : ndarray
+        The Laplacian of Gaussian of the image. Will have dimension
+        ``(image.ndim + 1)`` with the extra dimension along `sigma_axis`
+        containing images at each smoothing value in `sigma_list`.
+    sigma_list : ndarray
+        The list of sigmas corresponding to `image_cube`.
+    """
+    image = img_as_float(image)
+    float_dtype = _supported_float_type(image.dtype)
+    image = image.astype(float_dtype, copy=False)
+
+    # Gaussian filter requires that sequence-type sigmas have same
+    # dimensionality as image. This broadcasts scalar kernels
+    if np.isscalar(max_sigma):
+        max_sigma = np.full(image.ndim, max_sigma, dtype=float_dtype)
+    if np.isscalar(min_sigma):
+        min_sigma = np.full(image.ndim, min_sigma, dtype=float_dtype)
+
+    # Convert sequence types to array
+    min_sigma = np.asarray(min_sigma, dtype=float_dtype)
+    max_sigma = np.asarray(max_sigma, dtype=float_dtype)
+
+    if log_scale:
+        start = np.log10(min_sigma)
+        stop = np.log10(max_sigma)
+        sigma_list = np.logspace(start, stop, num_sigma)
+    else:
+        sigma_list = np.linspace(min_sigma, max_sigma, num_sigma)
+
+    # computing gaussian laplace
+    # average s**2 provides scale invariance
+    gl_images = [-gaussian_laplace(image, s) * np.mean(s) ** 2
+                 for s in sigma_list]
+    image_cube = np.stack(gl_images, axis=sigma_axis)
+
+    return image_cube, sigma_list
 
 
 def blob_log(image, min_sigma=1, max_sigma=50, num_sigma=10, threshold=.2,
@@ -480,38 +592,11 @@ def blob_log(image, min_sigma=1, max_sigma=50, num_sigma=10, threshold=.2,
     image = image.astype(float_dtype, copy=False)
 
     # if both min and max sigma are scalar, function returns only one sigma
-    scalar_sigma = (
-        True if np.isscalar(max_sigma) and np.isscalar(min_sigma) else False
-    )
+    scalar_sigma = np.isscalar(max_sigma) and np.isscalar(min_sigma)
 
-    # Gaussian filter requires that sequence-type sigmas have same
-    # dimensionality as image. This broadcasts scalar kernels
-    if np.isscalar(max_sigma):
-        max_sigma = np.full(image.ndim, max_sigma, dtype=float_dtype)
-    if np.isscalar(min_sigma):
-        min_sigma = np.full(image.ndim, min_sigma, dtype=float_dtype)
-
-    # Convert sequence types to array
-    min_sigma = np.asarray(min_sigma, dtype=float_dtype)
-    max_sigma = np.asarray(max_sigma, dtype=float_dtype)
-
-    if log_scale:
-        # for anisotropic data, we use the "highest resolution/variance" axis
-        standard_axis = np.argmax(min_sigma)
-        start = np.log10(min_sigma[standard_axis])
-        stop = np.log10(max_sigma[standard_axis])
-        scale = np.logspace(start, stop, num_sigma)[:, np.newaxis]
-        sigma_list = scale * min_sigma / np.max(min_sigma)
-    else:
-        scale = np.linspace(0, 1, num_sigma)[:, np.newaxis]
-        sigma_list = scale * (max_sigma - min_sigma) + min_sigma
-
-    # computing gaussian laplace
-    # average s**2 provides scale invariance
-    gl_images = [-gaussian_laplace(image, s) * np.mean(s) ** 2
-                 for s in sigma_list]
-
-    image_cube = np.stack(gl_images, axis=-1)
+    image_cube, sigma_list = scale_space_log(image, min_sigma, max_sigma,
+                                             num_sigma, log_scale,
+                                             sigma_axis=-1)
 
     exclude_border = _format_exclude_border(image.ndim, exclude_border)
     local_maxima = peak_local_max(

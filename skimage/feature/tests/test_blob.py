@@ -6,7 +6,8 @@ from numpy.testing import assert_almost_equal
 
 from skimage.draw import disk
 from skimage.draw.draw3d import ellipsoid
-from skimage.feature import blob_dog, blob_log, blob_doh
+from skimage.feature import (blob_dog, blob_doh, blob_log, scale_space_dog,
+                             scale_space_log)
 from skimage.feature.blob import _blob_overlap
 
 
@@ -32,7 +33,10 @@ def test_blob_dog(dtype):
         threshold /= img.ptp()
 
     blobs = blob_dog(img, min_sigma=4, max_sigma=50, threshold=threshold)
-    radius = lambda x: r2 * x[2]
+
+    def radius(x):
+        return r2 * x[2]
+
     s = sorted(blobs, key=radius)
     thresh = 5
     ratio_thresh = 0.25
@@ -50,7 +54,7 @@ def test_blob_dog(dtype):
     b = s[2]
     assert abs(b[0] - 200) <= thresh
     assert abs(b[1] - 350) <= thresh
-    assert abs(radius(b)- 45) <= ratio_thresh * 45
+    assert abs(radius(b) - 45) <= ratio_thresh * 45
 
     # Testing no peaks
     img_empty = np.zeros((100, 100), dtype=dtype)
@@ -156,7 +160,9 @@ def test_blob_log(dtype):
 
     blobs = blob_log(img, min_sigma=5, max_sigma=20, threshold=threshold)
 
-    radius = lambda x: r2 * x[2]
+    def radius(x):
+        return r2 * x[2]
+
     s = sorted(blobs, key=radius)
     thresh = 3
 
@@ -323,7 +329,9 @@ def test_blob_doh(dtype):
         num_sigma=10,
         threshold=threshold)
 
-    radius = lambda x: x[2]
+    def radius(x):
+        return x[2]
+
     s = sorted(blobs, key=radius)
     thresh = 4
 
@@ -371,7 +379,9 @@ def test_blob_doh_log_scale():
         log_scale=True,
         threshold=.05)
 
-    radius = lambda x: x[2]
+    def radius(x):
+        return x[2]
+
     s = sorted(blobs, key=radius)
     thresh = 10
 
@@ -488,3 +498,52 @@ def test_no_blob():
     im = np.zeros((10, 10))
     blobs = blob_log(im,  min_sigma=2, max_sigma=5, num_sigma=4)
     assert len(blobs) == 0
+
+
+def test_scale_space_dog():
+    img = np.ones((512, 512))
+    image_cube, sigma_list = scale_space_dog(img)
+    assert isinstance(sigma_list, np.ndarray)
+    assert len(sigma_list) == image_cube.shape[-1] + 1
+    for i in range(4):
+        assert_almost_equal(image_cube[:, :, i],
+                            image_cube[:, :, i + 1])
+
+    centers = [(400, 130), (100, 300), (200, 350)]
+    radii = [20, 25, 45]
+    for center, rad in zip(centers, radii):
+        xs, ys = disk(center, rad)
+        img[xs, ys] = 255
+
+    thresh = 2
+    image_cube, sigma_list = scale_space_dog(img, 5, 50)
+    dog = image_cube[:, :, 2]
+    blobs = blob_dog(img, min_sigma=5, max_sigma=50)
+    dog_blobs = blob_dog(dog, min_sigma=5, max_sigma=50)
+    for blob in blobs:
+        assert min([np.linalg.norm(blob[:2] - dog_blobs[i][:2])
+                    for i in range(dog_blobs.shape[0])]) <= thresh
+
+
+def test_scale_space_log():
+    img = np.ones((256, 256)) * 255
+    image_cube, sigma_list = scale_space_log(img, min_sigma=5, max_sigma=20)
+    assert isinstance(sigma_list, np.ndarray)
+    assert len(sigma_list) == image_cube.shape[-1]
+    zero = np.zeros((256, 256))
+    for i in range(10):
+        log = image_cube[:, :, i]
+        demeaned_log = log - log.mean()
+        assert_almost_equal(demeaned_log, zero)
+
+    centers = [(200, 65), (80, 25), (50, 150), (100, 175)]
+    radii = [5, 15, 25, 30]
+    for center, rad in zip(centers, radii):
+        xs, ys = disk(center, rad)
+        img[xs, ys] = 255
+
+    blobs = blob_log(img, min_sigma=5, max_sigma=20, threshold=1)
+    log_blobs = blob_log(image_cube[:, :, 2], min_sigma=5, max_sigma=20,
+                         threshold=1)
+    thresh = 5
+    assert min([np.linalg.norm(blobs - log_blobs)]) <= thresh

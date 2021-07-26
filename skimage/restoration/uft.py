@@ -409,6 +409,36 @@ def ir2tf(imp_resp, shape, dim=None, is_real=True):
     return out.astype(cplx_dtype, copy=False)
 
 
+def _laplacian_kernel(ndim, variant='ortho'):
+    if variant == 'ortho':
+        # Take differences only along the orthogonal directions
+        # In 2D this variant is
+        # [0,  1,  0]
+        # [1, -4,  1]
+        # [0,  1,  0]
+        kernel = np.zeros([3] * ndim)
+        for dim in range(ndim):
+            idx = tuple([slice(1, 2)] * dim +
+                        [slice(None)] +
+                        [slice(1, 2)] * (ndim - dim - 1))
+            kernel[idx] = np.array([1.0,
+                                  0.0,
+                                  1.0]).reshape([-1 if i == dim else 1
+                                                  for i in range(ndim)])
+            kernel[(slice(1, 2), ) * ndim] = -2.0 * ndim
+    elif variant == 'corners':
+        # Take differences only along the diagonal directions
+        # In 2D this variant is
+        # [1,  0,  1]
+        # [0, -4,  0]
+        # [1,  0,  1]
+        kernel = np.zeros([3] * ndim)
+        for corner_idx in itertools.product(*((0, -1), ) * ndim):
+            kernel[corner_idx] = 1
+        kernel[(1,) * ndim] = -2 ** ndim
+    return kernel
+
+
 def laplacian(ndim, shape, is_real=True):
     """Return the transfer function of the Laplacian.
 
@@ -440,14 +470,5 @@ def laplacian(ndim, shape, is_real=True):
     >>> np.all(tf == ir2tf(ir, (32, 32)))
     True
     """
-    impr = np.zeros([3] * ndim)
-    for dim in range(ndim):
-        idx = tuple([slice(1, 2)] * dim +
-                    [slice(None)] +
-                    [slice(1, 2)] * (ndim - dim - 1))
-        impr[idx] = np.array([-1.0,
-                              0.0,
-                              -1.0]).reshape([-1 if i == dim else 1
-                                              for i in range(ndim)])
-    impr[(slice(1, 2), ) * ndim] = 2.0 * ndim
+    impr = -_laplacian_kernel(ndim, variant='ortho')
     return ir2tf(impr, shape, is_real=is_real), impr

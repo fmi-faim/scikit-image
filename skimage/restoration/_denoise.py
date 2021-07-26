@@ -1,17 +1,18 @@
 import functools
-from math import ceil
 import numbers
+from math import ceil
 
 import scipy.stats
 import numpy as np
 import pywt
 
+from .. import color
 from .. import img_as_float
 from .._shared import utils
 from .._shared.utils import _supported_float_type, warn
-from ._denoise_cy import _denoise_bilateral, _denoise_tv_bregman
-from .. import color
 from ..color.colorconv import ycbcr_from_rgb
+from ._denoise_cy import _denoise_bilateral, _denoise_tv_bregman
+from .uft import _laplacian_kernel
 
 
 def _gaussian_weight(array, sigma_squared, *, dtype=float):
@@ -1001,3 +1002,107 @@ def estimate_sigma(image, average_sigmas=False, multichannel=False, *,
     coeffs = pywt.dwtn(image, wavelet='db2')
     detail_coeffs = coeffs['d' * image.ndim]
     return _sigma_est_dwt(detail_coeffs, distribution='Gaussian')
+
+
+def _immaeker_kernel(ndim):
+    """ Small kernel for fast variance estimation
+
+    Parameters
+    ----------
+    ndim : int
+        The number of dimensions.
+
+    Returns
+    -------
+    kernel : ndarray
+        The small kernel suitable for variance estimation. It will have size 3
+        along each axis.
+
+    Notes
+    -----
+    This kernel was suggested for the 2D case in [1]_. Here the two Laplacians
+    that are subtracted have been extended to the n-dimensional case.
+
+    References
+    ----------
+    .. [1] Immerkær, J. (1996). Fast Noise Variance Estimation. Computer Vision
+           and Image Understanding, 64(2), 300–302.
+           :DOI:`10.1006/cviu.1996.0060`
+    """
+    lap1 = _laplacian_kernel(ndim, 'ortho')
+    lap2 = _laplacian_kernel(ndim, 'corners')
+    k = lap2 - 2 * lap1
+    return k
+
+
+def estimate_local_variance(image, win_size=15, average_channels=False,
+                            channel_axis=None):
+    """Estimate image variance at a pixel using Immerkær's method.
+
+    Parameters
+    ----------
+    image : ndarray
+        Image for which to estimate the noise standard deviation. 3D and higher
+        dimensional images are also supported.
+    win_size : int or 'global', optional
+        An odd integer corresponding to the window size around each pixel where
+        the variance estimate will be averaged. If ``win_size='global'` is
+        specified, the global average estimate is returned.
+
+    Returns
+    -------
+    variance : ndarray, float or sequence
+        Estimated noise variance(s). When `win_size` is an integer this is
+        equal in shape to the original image. If `channel_axis` is not None and
+        `average_sigmas` is True, the estimate is done in each channel
+        individually and the average across channels is taken. If
+        ``win_size='global'` is specified, the returned value is a scalar value
+        across the whole image (or one scalar per image channel).
+
+    Notes
+    -----
+    This function is an n-dimensional extension of the fast noise variance
+    estimation proposed in [1]_. It will tend to overestimate the true variance
+    as image texture/edges can also contribute to the variance estimate. It is
+    most suitable for estimating variance in cases where the noise level is
+    relatively high.
+
+    References
+    ----------
+    .. [1] Immerkær, J. (1996). Fast Noise Variance Estimation. Computer Vision
+           and Image Understanding, 64(2), 300–302.
+           :DOI:`10.1006/cviu.1996.0060`
+    """
+    if channel_axis is not None:
+        channel_axis = channel_axis % image.ndim
+        _at = functools.partial(utils.slice_at_axis, axis=channel_axis)
+        nchannels = image.shape[channel_axis]
+        variances = [
+            estimate_local_variance(image[_at(c)], win_size, channel_axis=None)
+            for c in range(nchannels)
+        ]
+        variances = variances.stack(axis=channel_axis)
+        if average_channels:
+            variances = variances.mean(axis=channel_axis)
+        return variances
+
+    float_dtype = utils._supported_float_type(image.dtype)
+    image = image.astype(float_dtype, copy=False)
+
+    k = _immaeker_kernel(image.ndim)
+    var_scaling = np.sum(k * k)
+    # scaling the kernel is more efficient than rescaling the convolution
+    # output
+    k /= math.sqrt(var_scaling)
+
+    # Eq. 2: variance is the square of the (normalized) convolution
+    pixelwise_var_est = ndi.convolve(image, k)
+    pixelwise_var_est *= pixelwise_var_est
+
+    if win_size == 'global':
+        var_est = pixelwise_var_est.mean()
+    else:
+        # TODO: need variant with mean-only for efficiency
+        from skimage.filters.thresholding import _mean_std
+        var_est = _mean_std(pixelwise_var_est, win_size)[0]
+    return var_est

@@ -441,8 +441,8 @@ class SIFT(FeatureDetector, DescriptorExtractor):
 
                     magnitude = np.sqrt(np.square(gradientY) + np.square(
                         gradientX))  # gradient magnitude
-                    theta = np.mod(np.arctan2(gradientX, gradientY),
-                                   2 * np.pi)  # angles
+                    theta = np.arctan2(gradientX, gradientY) + np.pi  # angles
+
                     # more weight to center values
                     kernel = np.exp(-np.divide(np.add(np.square(n),
                                                       np.square(m)),

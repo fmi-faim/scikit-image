@@ -326,7 +326,8 @@ class SIFT(FeatureDetector, DescriptorExtractor):
             # localize extrema
             oshape = octave.shape
             # mask for all extrema that still have to be tested
-            for i in range(5):
+            refinement_iterations = 5
+            for i in range(refinement_iterations):
                 if i > 0:
                     # exclude any keys that have moved out of bounds
                     keys = keys[self._inrange(keys, oshape), :]
@@ -337,7 +338,7 @@ class SIFT(FeatureDetector, DescriptorExtractor):
 
                 # solve for offset of the extremum
                 off = _offsets(grad, hess)
-                if i == 4:
+                if i == refinement_iterations - 1:
                     break
                 # offset is too big and an increase would not bring us out of
                 # bounds
@@ -527,7 +528,11 @@ class SIFT(FeatureDetector, DescriptorExtractor):
         n_key = len(self.scales)
         self.descriptors = np.empty((n_key, self.n_hist ** 2 * self.n_ori),
                                     dtype=np.uint8)
-        key_count = 0
+        # indices of the histograms
+        hists = np.arange(1, self.n_hist + 1)
+        # indices of the bins
+        bins = np.arange(1, self.n_ori + 1)
+
         key_numbers = np.arange(n_key)
         for o in range(self.n_octaves):
             in_oct = self.octaves == o
@@ -555,10 +560,6 @@ class SIFT(FeatureDetector, DescriptorExtractor):
                 np.minimum(yx + radius_patch[:, np.newaxis] + 0.5,
                            (dim[0] - 1, dim[1] - 1)), dtype=int)
 
-            # indices of the histograms
-            hists = np.arange(1, self.n_hist + 1)
-            # indices of the bins
-            bins = np.arange(1, self.n_ori + 1)
             for k in range(len(p_max)):
                 rad_k = radius[k]
                 ori = orientations[k]
@@ -630,11 +631,9 @@ class SIFT(FeatureDetector, DescriptorExtractor):
                 w2 = w0 * (1 - (self.n_ori / (2 * np.pi))
                            * near_t_val[patch_idx])
                 k_index = near_t[patch_idx]
+                k_index2 = np.mod((k_index + 1), self.n_ori)
                 np.add.at(histograms, (row_idx, column_idx, k_index), w1)
-                np.add.at(histograms,
-                          (row_idx, column_idx,
-                           np.mod((k_index + 1), self.n_ori)),
-                          w2)
+                np.add.at(histograms, (row_idx, column_idx, k_index2), w2)
 
                 # convert the histograms to a 1d descriptor
                 histograms = histograms.flatten()
@@ -646,7 +645,6 @@ class SIFT(FeatureDetector, DescriptorExtractor):
                 # quantize the descriptor
                 descriptor = np.minimum(np.floor(descriptor), 255)
                 self.descriptors[numbers[k], :] = descriptor
-                key_count += 1
 
     def detect(self, image):
         """Detect the keypoints.

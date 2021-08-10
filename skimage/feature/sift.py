@@ -220,7 +220,7 @@ class SIFT(FeatureDetector, DescriptorExtractor):
 
         self.delta_min = 1 / upsampling
         self.deltas = (self.delta_min
-                       * np.power(2, np.arange(self.n_octaves - 1)))
+                       * np.power(2, np.arange(self.n_octaves)))
         self.scalespace_sigmas = None
         self.keypoints = None
         self.positions = None

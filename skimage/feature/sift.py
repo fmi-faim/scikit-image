@@ -19,6 +19,116 @@ def _edgeness(hxx, hyy, hxy):
     return (trace * trace) / determinant
 
 
+def _rotate(row, col, angle):
+    c = math.cos(angle)
+    s = math.sin(angle)
+    rot_row = c * row + s * col
+    rot_col = -s * row + c * col
+    return rot_row, rot_col
+
+
+def _compute_one_descriptor(k, hists, bins, lambda_descr, gradient, sigma,
+                            orientations, yx, numbers, scales, descriptors):
+    ori = orientations[k]
+    pos_r, pos_c = yx[k]
+    scale = scales[k]
+    sigma_k = sigma[k]
+    n_hist = hists.size
+    n_ori = bins.size
+
+    # dimensions of the patch
+    rad_k = lambda_descr * (1 + 1 / n_hist) * sigma_k
+    rad_patch = math.sqrt(2) * rad_k
+    dim = gradient[0].shape[0:2]
+    p_min = [int(max(0, c - rad_patch + 0.5)) for c in (pos_r, pos_c)]
+    p_max = [int(min(d - 1, c + rad_patch + 0.5))
+             for d, c in zip(dim, (pos_r, pos_c))]
+
+    histograms = np.zeros((n_hist, n_hist, n_ori))
+
+    # the patch
+    r, c = np.meshgrid(np.arange(p_min[0], p_max[0]),
+                       np.arange(p_min[1], p_max[1]),
+                       indexing='ij', sparse=True)
+    # normalized coordinates
+    r_norm = r - pos_r
+    c_norm = c - pos_c
+    r_norm, c_norm = _rotate(r_norm, c_norm, ori)
+
+    # select coordinates and gradient values within the patch
+    inside = np.maximum(np.abs(r_norm), np.abs(c_norm)) < rad_k
+    r_norm, c_norm = r_norm[inside], c_norm[inside]
+    r_idx, c_idx = np.nonzero(inside)
+    r = r[r_idx, 0]
+    c = c[0, c_idx]
+    gradient_row = gradient[0][r, c, scale]
+    gradient_col = gradient[1][r, c, scale]
+    # compute the (relative) gradient orientation
+    theta = np.arctan2(gradient_col, gradient_row) - ori
+    lam_sig = lambda_descr * sigma_k
+    # Gaussian weighted kernel magnitude
+    kernel = np.exp((r_norm * r_norm + c_norm * c_norm)
+                    / (-2 * lam_sig ** 2))
+    magnitude = np.sqrt(np.square(gradient_row)
+                        + np.square(gradient_col)) * kernel
+
+    lam_sig_ratio = 2 * lam_sig / n_hist
+    rc_bins = (hists - (1 + n_hist) / 2) * lam_sig_ratio
+    rc_bin_spacing = lam_sig_ratio
+    ori_bins = (2 * np.pi * bins) / n_ori
+
+    # distances to the histograms and bins
+    dist_r = np.abs(np.subtract.outer(rc_bins, r_norm))
+    dist_c = np.abs(np.subtract.outer(rc_bins, c_norm))
+    dist_t = np.abs(np.mod(np.subtract.outer(ori_bins, theta),
+                           2 * np.pi))
+
+    # the histograms/bins that get the contribution
+    near_r = dist_r <= rc_bin_spacing
+    near_c = dist_c <= rc_bin_spacing
+    near_t = np.argmin(dist_t, axis=0)
+    near_t_val = np.min(dist_t, axis=0)
+
+    # every contribution in y direction is combined with every in
+    # x direction
+    # for example y: histogram 3 and 4, x: histogram 2
+    # -> contribute to (3,2) and (4,2)
+    #
+    # comb shape = (r_norm.size, self.n_hist, self.n_hist)
+    # comb axes correspond to (patch_index, row, col)
+    comb = np.logical_and(near_c.T[:, None, :],
+                          near_r.T[:, :, None])
+    patch_idx, row_idx, column_idx = np.nonzero(comb)
+
+    # the weights/contributions are shared bilinearly between the
+    # histograms
+    inv_spacing = 1 / rc_bin_spacing
+    w0 = ((1 - inv_spacing * dist_r[row_idx, patch_idx])
+          * (1 - inv_spacing * dist_c[column_idx, patch_idx])
+          * magnitude[patch_idx])
+
+    # the weight is shared linearly between the 2 nearest bins
+    w1 = w0 * ((n_ori / (2 * np.pi))
+               * near_t_val[patch_idx])
+    w2 = w0 * (1 - (n_ori / (2 * np.pi))
+               * near_t_val[patch_idx])
+    k_index = near_t[patch_idx]
+    k_index2 = np.mod((k_index + 1), n_ori)
+    np.add.at(histograms, (row_idx, column_idx, k_index), w1)
+    np.add.at(histograms, (row_idx, column_idx, k_index2), w2)
+
+    # convert the histograms to a 1d descriptor
+    histograms = histograms.flatten()
+    # saturate the descriptor
+    histograms = np.minimum(histograms,
+                            0.2 * np.linalg.norm(histograms))
+    # normalize the descriptor
+    descriptor = (512 * histograms) / np.linalg.norm(histograms)
+    # quantize the descriptor
+    descriptor = np.minimum(np.floor(descriptor), 255)
+    descriptors[numbers[k], :] = descriptor
+
+
 def _sparse_gradient(vol, positions):
     """Gradient of a 3D volume at the provided `positions`.
 
@@ -514,13 +624,6 @@ class SIFT(FeatureDetector, DescriptorExtractor):
         # return the gradient_space to reuse it to find the descriptor
         return gradient_space
 
-    def _rotate(self, row, col, angle):
-        c = math.cos(angle)
-        s = math.sin(angle)
-        rot_row = c * row + s * col
-        rot_col = -s * row + c * col
-        return rot_row, rot_col
-
     def _compute_descriptor(self, gradient_space):
         """Source: "Anatomy of the SIFT Method" Alg. 12
         Calculates the descriptor for every keypoint
@@ -550,101 +653,8 @@ class SIFT(FeatureDetector, DescriptorExtractor):
             yx = positions / delta
             sigma = sigmas / delta
 
-            # dimensions of the patch
-            radius = self.lambda_descr * (1 + 1 / self.n_hist) * sigma
-            radius_patch = np.sqrt(2) * radius
-            p_min = np.asarray(
-                np.maximum(0, yx - radius_patch[:, np.newaxis] + 0.5),
-                dtype=int)
-            p_max = np.asarray(
-                np.minimum(yx + radius_patch[:, np.newaxis] + 0.5,
-                           (dim[0] - 1, dim[1] - 1)), dtype=int)
-
-            for k in range(len(p_max)):
-                rad_k = radius[k]
-                ori = orientations[k]
-                histograms = np.zeros((self.n_hist, self.n_hist, self.n_ori))
-                # the patch
-                r, c = np.meshgrid(np.arange(p_min[k, 0], p_max[k, 0]),
-                                   np.arange(p_min[k, 1], p_max[k, 1]),
-                                   indexing='ij', sparse=True)
-                # normalized coordinates
-                r_norm = r - yx[k, 0]
-                c_norm = c - yx[k, 1]
-                r_norm, c_norm = self._rotate(r_norm, c_norm, ori)
-
-                # select coordinates and gradient values within the patch
-                inside = np.maximum(np.abs(r_norm), np.abs(c_norm)) < rad_k
-                r_norm, c_norm = r_norm[inside], c_norm[inside]
-                r_idx, c_idx = np.nonzero(inside)
-                r = r[r_idx, 0]
-                c = c[0, c_idx]
-                gradient_row = gradient[0][r, c, scales[k]]
-                gradient_col = gradient[1][r, c, scales[k]]
-                # compute the (relative) gradient orientation
-                theta = np.arctan2(gradient_col, gradient_row) - ori
-                lam_sig = self.lambda_descr * sigma[k]
-                # Gaussian weighted kernel magnitude
-                kernel = np.exp((r_norm * r_norm + c_norm * c_norm)
-                                / (-2 * lam_sig ** 2))
-                magnitude = np.sqrt(np.square(gradient_row)
-                                    + np.square(gradient_col)) * kernel
-
-                lam_sig_ratio = 2 * lam_sig / self.n_hist
-                rc_bins = (hists - (1 + self.n_hist) / 2) * lam_sig_ratio
-                rc_bin_spacing = lam_sig_ratio
-                ori_bins = (2 * np.pi * bins) / self.n_ori
-
-                # distances to the histograms and bins
-                dist_r = np.abs(np.subtract.outer(rc_bins, r_norm))
-                dist_c = np.abs(np.subtract.outer(rc_bins, c_norm))
-                dist_t = np.abs(np.mod(np.subtract.outer(ori_bins, theta),
-                                       2 * np.pi))
-
-                # the histograms/bins that get the contribution
-                near_r = dist_r <= rc_bin_spacing
-                near_c = dist_c <= rc_bin_spacing
-                near_t = np.argmin(dist_t, axis=0)
-                near_t_val = np.min(dist_t, axis=0)
-
-                # every contribution in y direction is combined with every in
-                # x direction
-                # for example y: histogram 3 and 4, x: histogram 2
-                # -> contribute to (3,2) and (4,2)
-                #
-                # comb shape = (r_norm.size, self.n_hist, self.n_hist)
-                # comb axes correspond to (patch_index, row, col)
-                comb = np.logical_and(near_c.T[:, None, :],
-                                      near_r.T[:, :, None])
-                patch_idx, row_idx, column_idx = np.nonzero(comb)
-
-                # the weights/contributions are shared bilinearly between the
-                # histograms
-                inv_spacing = 1 / rc_bin_spacing
-                w0 = ((1 - inv_spacing * dist_r[row_idx, patch_idx])
-                      * (1 - inv_spacing * dist_c[column_idx, patch_idx])
-                      * magnitude[patch_idx])
-
-                # the weight is shared linearly between the 2 nearest bins
-                w1 = w0 * ((self.n_ori / (2 * np.pi))
-                           * near_t_val[patch_idx])
-                w2 = w0 * (1 - (self.n_ori / (2 * np.pi))
-                           * near_t_val[patch_idx])
-                k_index = near_t[patch_idx]
-                k_index2 = np.mod((k_index + 1), self.n_ori)
-                np.add.at(histograms, (row_idx, column_idx, k_index), w1)
-                np.add.at(histograms, (row_idx, column_idx, k_index2), w2)
-
-                # convert the histograms to a 1d descriptor
-                histograms = histograms.flatten()
-                # saturate the descriptor
-                histograms = np.minimum(histograms,
-                                        0.2 * np.linalg.norm(histograms))
-                # normalize the descriptor
-                descriptor = (512 * histograms) / np.linalg.norm(histograms)
-                # quantize the descriptor
-                descriptor = np.minimum(np.floor(descriptor), 255)
-                self.descriptors[numbers[k], :] = descriptor
+            for k in range(len(sigma)):
+                _compute_one_descriptor(k, hists, bins, self.lambda_descr, gradient, sigma, orientations, yx, numbers, scales, self.descriptors)
 
     def detect(self, image):
         """Detect the keypoints.

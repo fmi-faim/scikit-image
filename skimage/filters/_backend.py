@@ -43,7 +43,7 @@ def _backend_from_arg(backend):
     return backend
 
 
-def set_global_backend(backend):
+def set_global_backend(backend, coerce=False, only=False, try_last=False):
     """Sets the global filters backend
 
     The global backend has higher priority than registered backends, but lower
@@ -55,6 +55,13 @@ def set_global_backend(backend):
         The backend to use.
         Can either be a ``str`` containing the name of a known backend
         {'skimage.filters'} or an object that implements the uarray protocol.
+    coerce : bool
+        Whether to coerce input types when trying this backend.
+    only : bool
+        If ``True``, no more backends will be tried if this fails.
+        Implied by ``coerce=True``.
+    try_last : bool
+        If ``True``, the global backend is tried after registered backends.
 
     Raises
     ------
@@ -77,7 +84,7 @@ def set_global_backend(backend):
     array([1.30039443, 1.69490604, 1.88288636, 1.69490604, 1.30039443])
     """
     backend = _backend_from_arg(backend)
-    ua.set_global_backend(backend)
+    ua.set_global_backend(backend, coerce=coerce, only=only, try_last=try_last)
 
 
 def register_backend(backend):
@@ -183,4 +190,4 @@ def skip_backend(backend):
     return ua.skip_backend(backend)
 
 
-set_global_backend('skimage.filters')
+set_global_backend('skimage.filters', coerce=True, try_last=True)

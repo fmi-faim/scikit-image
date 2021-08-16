@@ -57,7 +57,15 @@ def _assequence(x):
 
 @_implements(_skimage_filters.gaussian)
 def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
-             multichannel=None, preserve_range=False, truncate=4.0):
+             multichannel=None, preserve_range=False, truncate=4.0, *,
+             channel_axis=None):
+    if channel_axis is not None:
+        if channel_axis == -1:
+            multichannel=True
+        else:
+            return NotImplementedError(
+                "TODO: add channel_axis support to cuCIM"
+            )
     return _cucim_filters.gaussian(
         image, sigma=sigma, output=output, mode=mode, cval=cval,
         multichannel=multichannel, preserve_range=preserve_range,

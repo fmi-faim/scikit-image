@@ -307,6 +307,13 @@ def test_intensity_max():
     assert_almost_equal(intensity, 2)
 
 
+def test_intensity_max_deprecated():
+    with expected_warnings(["'image_intensity' is a deprecated argument"]):
+        intensity = regionprops(SAMPLE, image_intensity=INTENSITY_SAMPLE
+                                )[0].max_intensity
+    assert_almost_equal(intensity, 2)
+
+
 def test_intensity_mean():
     intensity = regionprops(SAMPLE, intensity_image=INTENSITY_SAMPLE
                             )[0].intensity_mean
@@ -712,6 +719,17 @@ def test_extra_properties_table():
                             )
     assert_array_almost_equal(out['intensity_median'], np.array([2., 4.]))
     assert_array_equal(out['pixelcount'], np.array([10, 2]))
+
+
+def test_extra_properties_table_deprecated_kwarg():
+    with expected_warnings(["'image_intensity' is a deprecated argument"]):
+        out = regionprops_table(SAMPLE_MULTIPLE,
+                                image_intensity=INTENSITY_SAMPLE_MULTIPLE,
+                                properties=('label',),
+                                extra_properties=(intensity_median, pixelcount)
+                                )
+    assert_array_almost_equal(out['median_intensity'], array([2., 4.]))
+    assert_array_equal(out['pixelcount'], array([10, 2]))
 
 
 def test_multichannel():

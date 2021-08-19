@@ -5,6 +5,7 @@ import numpy as np
 from scipy import ndimage as ndi
 from scipy.spatial.distance import pdist
 
+from .._shared.utils import deprecate_kwarg
 from . import _moments
 from ._find_contours import find_contours
 from ._marching_cubes_lewiner import marching_cubes
@@ -738,10 +739,11 @@ def _props_to_dict(regions, properties=('label', 'bbox'), separator='-'):
     return out
 
 
+@deprecate_kwarg({'image_intensity': 'intensity_image'})
 def regionprops_table(label_image, intensity_image=None,
                       properties=('label', 'bbox'),
-                      *,
-                      cache=True, separator='-', extra_properties=None):
+                      *, image_intensity=None, cache=True, separator='-',
+                      extra_properties=None):
     """Compute image properties and return them as a pandas-compatible table.
 
     The table is a dictionary mapping column names to value arrays. See Notes
@@ -901,8 +903,10 @@ def regionprops_table(label_image, intensity_image=None,
     )
 
 
+@deprecate_kwarg({'image_intensity': 'intensity_image'})
 def regionprops(label_image, intensity_image=None, cache=True,
-                coordinates=None, *, extra_properties=None):
+                coordinates=None, *, image_intensity=None,
+                extra_properties=None):
     r"""Measure properties of labeled image regions.
 
     Parameters

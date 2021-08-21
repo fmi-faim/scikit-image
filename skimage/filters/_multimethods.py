@@ -68,12 +68,11 @@ def _dispatch_identity(func):
 
 """ _gaussian.py multimethods """
 
-
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
 def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
              multichannel=None, preserve_range=False, truncate=4.0, *,
-             channel_axis=-1):
+             channel_axis=None):
     return (image,)
 gaussian.__doc__ = _api.gaussian.__doc__
 

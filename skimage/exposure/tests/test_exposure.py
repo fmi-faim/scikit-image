@@ -394,16 +394,28 @@ def test_adapthist_grayscale():
     """Test a grayscale float image
     """
     img = util.img_as_float(data.astronaut())
-    img = rgb2gray(img)
-    img = np.dstack((img, img, img))
+    img_gray = rgb2gray(img)
+
+    # "RGB" but with identical channels -> V of HSV will be equal to img.
+    img = np.dstack((img_gray, img_gray, img_gray))
     adapted = exposure.equalize_adapthist(img, kernel_size=(57, 51),
-                                          clip_limit=0.01, nbins=128)
+                                          clip_limit=0.01, nbins=128,
+                                          channel_axis=-1)
+
     assert img.shape == adapted.shape
     assert_almost_equal(peak_snr(img, adapted), 100.140, 3)
     assert_almost_equal(norm_brightness_err(img, adapted), 0.0529, 3)
 
+    # processing the original grayscale image -> same SNR and error
+    adapted_0 = exposure.equalize_adapthist(img_gray, kernel_size=(57, 51),
+                                            clip_limit=0.01, nbins=128,
+                                            channel_axis=None)
+    assert_almost_equal(peak_snr(img_gray, adapted_0), 100.140, 3)
+    assert_almost_equal(norm_brightness_err(img_gray, adapted_0), 0.0529, 3)
 
-def test_adapthist_color():
+
+@pytest.mark.parametrize('channel_axis', [0, 1, 2, -1, -2, -3, None])
+def test_adapthist_color(channel_axis):
     """Test an RGB color uint16 image
     """
     img = util.img_as_uint(data.astronaut())
@@ -411,11 +423,22 @@ def test_adapthist_color():
         warnings.simplefilter('always')
         hist, bin_centers = exposure.histogram(img)
         assert len(w) > 0
-    adapted = exposure.equalize_adapthist(img, clip_limit=0.01)
+
+    if channel_axis is None:
+        msgs = ['Automatic detection of RGB or RGBA images']
+    else:
+        msgs = []
+        img = np.moveaxis(img, -1, channel_axis)
+    with expected_warnings(msgs):
+        adapted = exposure.equalize_adapthist(img, clip_limit=0.01,
+                                              channel_axis=channel_axis)
 
     assert adapted.min() == 0
     assert adapted.max() == 1.0
     assert img.shape == adapted.shape
+    if channel_axis is not None:
+        adapted = np.moveaxis(adapted, channel_axis, -1)
+        img = np.moveaxis(img, channel_axis, -1)
     full_scale = exposure.rescale_intensity(img)
     assert_almost_equal(peak_snr(full_scale, adapted), 109.393, 1)
     assert_almost_equal(norm_brightness_err(full_scale, adapted), 0.02, 2)
@@ -428,7 +451,8 @@ def test_adapthist_alpha():
     img = util.img_as_float(data.astronaut())
     alpha = np.ones((img.shape[0], img.shape[1]), dtype=float)
     img = np.dstack((img, alpha))
-    adapted = exposure.equalize_adapthist(img)
+    with expected_warnings(['Automatic detection of RGB or RGBA images']):
+        adapted = exposure.equalize_adapthist(img)
     assert adapted.shape != img.shape
     img = img[:, :, :3]
     full_scale = exposure.rescale_intensity(img)

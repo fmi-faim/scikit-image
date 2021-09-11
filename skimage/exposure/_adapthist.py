@@ -14,10 +14,14 @@ responsible.  Basically, don't be a jerk, and remember that anything free
 comes with no guarantee.
 """
 import numbers
-import numpy as np
-from ..util import img_as_float, img_as_uint
-from ..exposure import rescale_intensity
 
+import numpy as np
+
+from .._shared._warnings import warn
+from ..color import hsv2rgb, rgb2hsv
+from ..exposure import rescale_intensity
+from ..util import img_as_float, img_as_uint
+from ..util.dtype import _convert
 
 NR_OF_GRAY = 2 ** 14  # number of grayscale levels to use in CLAHE algorithm
 
@@ -77,17 +81,27 @@ def equalize_adapthist(image, kernel_size=None,
     .. [1] http://tog.acm.org/resources/GraphicsGems/
     .. [2] https://en.wikipedia.org/wiki/CLAHE#CLAHE
     """
-    if channel_axis is not None:
+    use_rgb2hsv = channel_axis is not None
+
+    # TODO: remove this if clause once autodetection is removed
+    if channel_axis is None and image.shape[-1] in [3, 4]:
+        warn('Automatic detection of RGB or RGBA images via image.shape[-1] '
+             'is deprecated and will be disabled in the next release. Please '
+             'specify the color axis (if any) via `channel_axis`.')
+        channel_axis = -1
+        use_rgb2hsv = True
+
+    if use_rgb2hsv:
         if image.shape[channel_axis] not in [3, 4]:
             raise ValueError(
                 f'Image must be have 3 channels (RGB) or 4 channels (RGBA) if '
-                f'a channel_axis is specified. {image.shape[channel_axis]} '
-                f'channels detected.'
+                f'a `channel_axis` is specified, but '
+                f'{image.shape[channel_axis]} channels were detected.'
             )
         image = np.moveaxis(image, channel_axis, -1)
 
         # Slice the first three channels so that we remove any alpha channels.
-        hsv = color.rgb2hsv(image[..., :3], channel_axis=-1)
+        hsv = rgb2hsv(image[..., :3], channel_axis=-1)
 
         # apply equalize_adapthist on the values channel only
         value = hsv[..., 2].copy()
@@ -95,7 +109,7 @@ def equalize_adapthist(image, kernel_size=None,
                                    clip_limit=clip_limit, nbins=nbins,
                                    channel_axis=None)
         hsv[..., 2] = _convert(value, hsv.dtype)
-        hsv = color.hsv2rgb(hsv, channel_axis=-1)
+        hsv = hsv2rgb(hsv, channel_axis=-1)
         return np.moveaxis(hsv, -1, channel_axis)
 
     image = img_as_uint(image)

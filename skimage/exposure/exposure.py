@@ -1,12 +1,14 @@
 import numpy as np
 
 from ..color.colorconv import rgb2gray, rgba2rgb
-from ..util.dtype import dtype_range, dtype_limits
+from ..util.dtype import dtype_limits, dtype_range
 from .._shared import utils
+from .._shared._warnings import warn
 
 
 __all__ = ['histogram', 'cumulative_distribution', 'equalize_hist',
-           'rescale_intensity', 'adjust_gamma', 'adjust_log', 'adjust_sigmoid']
+           'rescale_intensity', 'adjust_gamma', 'adjust_log', 'adjust_sigmoid',
+           'is_low_contrast']
 
 
 DTYPE_RANGE = dtype_range.copy()
@@ -765,7 +767,7 @@ def adjust_sigmoid(image, cutoff=0.5, gain=10, inv=False):
 
 
 def is_low_contrast(image, fraction_threshold=0.05, lower_percentile=1,
-                    upper_percentile=99, method='linear'):
+                    upper_percentile=99, method='linear', channel_axis=None):
     """Determine if an image is low contrast.
 
     Parameters
@@ -783,6 +785,10 @@ def is_low_contrast(image, fraction_threshold=0.05, lower_percentile=1,
     method : str, optional
         The contrast determination method.  Right now the only available
         option is "linear".
+    channel_axis : int or None, optional
+        Can be used to specify that a dimension of `image` corresponds to RGB
+        or RGBA color channels. If None, all channels are assumed to be
+        spatial.
 
     Returns
     -------
@@ -814,11 +820,23 @@ def is_low_contrast(image, fraction_threshold=0.05, lower_percentile=1,
     if image.dtype == bool:
         return not ((image.max() == 1) and (image.min() == 0))
 
-    if image.ndim == 3:
-        if image.shape[2] == 4:
-            image = rgba2rgb(image)
-        if image.shape[2] == 3:
-            image = rgb2gray(image)
+    # TODO: remove this clause once autodetection is removed
+    if channel_axis is None and image.ndim == 3 and image.shape[2] in [3, 4]:
+        warn('Automatic detection of RGB or RGBA images via image.shape[-1] '
+             'is deprecated and will be disabled in the next release. Please '
+             'specify the color axis (if any) via `channel_axis`.')
+        channel_axis = -1
+
+    if channel_axis is not None:
+
+        if image.shape[channel_axis] == 4:
+            image = rgba2rgb(image, channel_axis=channel_axis)
+        if image.shape[channel_axis] == 3:
+            image = rgb2gray(image, channel_axis=channel_axis)
+        else:
+            raise ValueError(
+                f'image.shape[channel_axis] must be either 3 (RGB) or 4 (RGBA)'
+                f', but {image.shape[channel_axis]} channels were found.')
 
     dlimits = dtype_limits(image, clip_negative=False)
     limits = np.percentile(image, [lower_percentile, upper_percentile])

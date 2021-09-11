@@ -811,6 +811,31 @@ def test_is_low_contrast_boolean():
     assert not exposure.is_low_contrast(image)
 
 
+@pytest.mark.parametrize('channel_axis', [0, 1, 2, -1, -2, -3, None])
+def test_is_low_contrast_color(channel_axis):
+    image = data.astronaut()
+    image_low_contrast = data.astronaut() // 64
+
+    if channel_axis is None:
+        msgs = ['Automatic detection of RGB or RGBA images']
+    else:
+        msgs = []
+        image = np.moveaxis(image, -1, channel_axis)
+        image_low_contrast = np.moveaxis(image_low_contrast, -1, channel_axis)
+    with expected_warnings(msgs):
+        assert not exposure.is_low_contrast(image, channel_axis=channel_axis)
+    with expected_warnings(msgs):
+        assert exposure.is_low_contrast(image_low_contrast,
+                                        channel_axis=channel_axis)
+
+
+@pytest.mark.parametrize('n_channels', [2, 5, 10])
+def test_is_low_contrast_invalid_n_channels(n_channels):
+    image = np.zeros((32, n_channels))
+    with pytest.raises(ValueError):
+        exposure.is_low_contrast(image, channel_axis=-1)
+
+
 # Test negative input
 #####################
 

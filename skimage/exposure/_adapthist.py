@@ -16,16 +16,14 @@ comes with no guarantee.
 import numbers
 import numpy as np
 from ..util import img_as_float, img_as_uint
-from ..color.adapt_rgb import adapt_rgb, hsv_value
 from ..exposure import rescale_intensity
 
 
 NR_OF_GRAY = 2 ** 14  # number of grayscale levels to use in CLAHE algorithm
 
 
-@adapt_rgb(hsv_value)
 def equalize_adapthist(image, kernel_size=None,
-                       clip_limit=0.01, nbins=256):
+                       clip_limit=0.01, nbins=256, channel_axis=None):
     """Contrast Limited Adaptive Histogram Equalization (CLAHE).
 
     An algorithm for local contrast enhancement, that uses histograms computed
@@ -47,6 +45,11 @@ def equalize_adapthist(image, kernel_size=None,
         contrast).
     nbins : int, optional
         Number of gray bins for histogram ("data range").
+    channel_axis : int, optional
+        Can be used to specify that a dimension of `image` corresponds to RGB
+        or RGBA color channels. In this case, processing occurs on the V
+        channel in HSV space (see Notes section below). When channel_axis is
+        None, it is assumed that all axes are spatial.
 
     Returns
     -------
@@ -74,6 +77,26 @@ def equalize_adapthist(image, kernel_size=None,
     .. [1] http://tog.acm.org/resources/GraphicsGems/
     .. [2] https://en.wikipedia.org/wiki/CLAHE#CLAHE
     """
+    if channel_axis is not None:
+        if image.shape[channel_axis] not in [3, 4]:
+            raise ValueError(
+                f'Image must be have 3 channels (RGB) or 4 channels (RGBA) if '
+                f'a channel_axis is specified. {image.shape[channel_axis]} '
+                f'channels detected.'
+            )
+        image = np.moveaxis(image, channel_axis, -1)
+
+        # Slice the first three channels so that we remove any alpha channels.
+        hsv = color.rgb2hsv(image[..., :3], channel_axis=-1)
+
+        # apply equalize_adapthist on the values channel only
+        value = hsv[..., 2].copy()
+        value = equalize_adapthist(value, kernel_size=kernel_size,
+                                   clip_limit=clip_limit, nbins=nbins,
+                                   channel_axis=None)
+        hsv[..., 2] = _convert(value, hsv.dtype)
+        hsv = color.hsv2rgb(hsv, channel_axis=-1)
+        return np.moveaxis(hsv, -1, channel_axis)
 
     image = img_as_uint(image)
     image = np.round(

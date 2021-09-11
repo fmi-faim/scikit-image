@@ -39,6 +39,9 @@ Version 1.0
   function in `skimage/measure/_label.py`
 * Change the warning about poorly conditioned data to a ValueError within
   `skimage.measure.CircleModel.estimate` and update the tests in `test_circle_model_insufficient_data` accordingly.
+* Remove legacy guessing of RGB/RGBA status via image.shape[-1] from
+  `skimage.exposure.equalize_adapthist`. Also remove corresponding
+  deprecation warning checks from test cases in `test_exposure.py`.
 
 Other (2022)
 ------------

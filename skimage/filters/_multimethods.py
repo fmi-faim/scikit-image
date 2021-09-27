@@ -66,6 +66,16 @@ def _dispatch_identity(func):
     return generate_multimethod(func, _identity_arg_replacer, domain="numpy.skimage.filters")
 
 
+""" _fft_based.py multimethods """
+
+@create_skimage_filters(_image_arg_replacer)
+@all_of_type(ndarray)
+def butterworth(image, cutoff_frequency_ratio=0.005, high_pass=True, order=2.0,
+                channel_axis=None):
+    return (image,)
+butterworth.__doc__ = _api.butterworth.__doc__
+
+
 """ _gaussian.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)

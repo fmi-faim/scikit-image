@@ -1,3 +1,4 @@
+from ._fft_based import butterworth
 from ._gabor import gabor, gabor_kernel
 from ._gaussian import (gaussian, _guess_spatial_dimensions,
                         difference_of_gaussians)
@@ -21,5 +22,6 @@ from .thresholding import (threshold_local, threshold_otsu, threshold_yen,
                            threshold_niblack, threshold_sauvola,
                            threshold_multiotsu, try_all_threshold,
                            apply_hysteresis_threshold)
+
 # forward not in public API?
 # compute_hessian_eigenvalues not in public API?

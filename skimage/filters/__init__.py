@@ -1,4 +1,5 @@
-from ._multimethods import (gabor, gabor_kernel)
+from ._multimethods import butterworth
+from ._multimethods import gabor, gabor_kernel
 from ._multimethods import (gaussian, _guess_spatial_dimensions,
                             difference_of_gaussians)
 from ._multimethods import median
@@ -24,7 +25,6 @@ from .lpi_filter import LPIFilter2D
 from . import rank
 from ._backend import (set_backend, skip_backend, set_global_backend,
                        register_backend)
-from ._fft_based import butterworth
 
 
 __all__ = ['inverse',

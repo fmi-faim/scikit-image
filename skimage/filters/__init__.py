@@ -24,6 +24,7 @@ from .lpi_filter import LPIFilter2D
 from . import rank
 from ._backend import (set_backend, skip_backend, set_global_backend,
                        register_backend)
+from ._fft_based import butterworth
 
 
 __all__ = ['inverse',
@@ -31,6 +32,7 @@ __all__ = ['inverse',
            'wiener',
            'LPIFilter2D',
            'gaussian',
+           'butterworth',
            'difference_of_gaussians',
            'median',
            'sobel',
@@ -71,4 +73,5 @@ __all__ = ['inverse',
            'apply_hysteresis_threshold',
            'rank',
            'unsharp_mask',
-           'window']
+           'window',
+           ]

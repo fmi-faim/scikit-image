@@ -14,7 +14,6 @@ from warnings import warn
 import numpy as np
 
 from .._shared.utils import _supported_float_type, check_nD
-from ..feature.corner import hessian_matrix, hessian_matrix_eigvals
 from ..util import img_as_float, invert
 
 

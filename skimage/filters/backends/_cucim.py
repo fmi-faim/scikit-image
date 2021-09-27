@@ -70,4 +70,6 @@ def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
         image, sigma=sigma, output=output, mode=mode, cval=cval,
         multichannel=multichannel, preserve_range=preserve_range,
         truncate=truncate)
+
+
 gaussian.__doc__ = _cucim_filters.gaussian.__doc__

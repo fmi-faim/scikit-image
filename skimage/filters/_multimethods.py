@@ -1,11 +1,13 @@
 import functools
 
-# from numpy import ndarray
+from numpy import dtype, ndarray
 from uarray import generate_multimethod, Dispatchable
 from uarray import all_of_type, create_multimethod
-from unumpy import dtype, ndarray, mark_dtype
+from unumpy import mark_dtype
+
 
 import skimage.filters
+from .._shared.utils import deprecate_kwarg
 from skimage.filters import _api
 
 
@@ -122,9 +124,10 @@ gabor_kernel.__doc__ = _api.gabor_kernel.__doc__
 
 """ _median.py multimethods """
 
+@deprecate_kwarg(kwarg_mapping={'selem': 'footprint'}, removed_version="1.0")
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
-def median(image, selem=None, out=None, mode='nearest', cval=0.0,
+def median(image, footprint=None, out=None, mode='nearest', cval=0.0,
            behavior='ndimage'):
     return (image,)
 median.__doc__ = _api.median.__doc__
@@ -151,6 +154,7 @@ from .._shared import utils
 
 """ _unsharp_mask.py multimethods """
 
+@utils.deprecate_multichannel_kwarg(multichannel_position=3)
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
 def unsharp_mask(image, radius=1.0, amount=1.0, multichannel=False,
@@ -436,9 +440,10 @@ def threshold_li(image, *, tolerance=None, initial_guess=None,
 threshold_li.__doc__ = _api.threshold_li.__doc__
 
 
+@deprecate_kwarg({'max_iter': 'max_num_iter'}, removed_version="1.0")
 @create_skimage_filters(_image_kwarg_hist_arg_replacer)
 @all_of_type(ndarray)
-def threshold_minimum(image=None, nbins=256, max_iter=10000, *, hist=None):
+def threshold_minimum(image=None, nbins=256, max_num_iter=10000, *, hist=None):
     return (image, hist)
 threshold_minimum.__doc__ = _api.threshold_minimum.__doc__
 

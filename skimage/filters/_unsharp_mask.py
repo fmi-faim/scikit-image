@@ -20,7 +20,6 @@ def _unsharp_mask_single_channel(image, radius, amount, vrange):
 
 
 @utils.channel_as_last_axis()
-@utils.deprecate_multichannel_kwarg(multichannel_position=3)
 def unsharp_mask(image, radius=1.0, amount=1.0, multichannel=False,
                  preserve_range=False, *, channel_axis=None):
     """Unsharp masking filter.

@@ -5,7 +5,8 @@ from numpy.testing import (assert_almost_equal, assert_array_almost_equal,
 
 from skimage._shared import testing
 from skimage._shared.utils import _supported_float_type
-from skimage.filters._gabor import _sigma_prefactor, gabor, gabor_kernel
+from skimage.filters import gabor, gabor_kernel
+from skimage.filters._gabor import _sigma_prefactor
 
 
 def test_gabor_kernel_size():

@@ -19,7 +19,6 @@ def _unsharp_mask_single_channel(image, radius, amount, vrange):
     return result
 
 
-@utils.channel_as_last_axis()
 def unsharp_mask(image, radius=1.0, amount=1.0, multichannel=False,
                  preserve_range=False, *, channel_axis=None):
     """Unsharp masking filter.
@@ -140,9 +139,10 @@ def unsharp_mask(image, radius=1.0, amount=1.0, multichannel=False,
 
     if channel_axis is not None:
         result = np.empty_like(fimg, dtype=float_dtype)
-        for channel in range(image.shape[-1]):
-            result[..., channel] = _unsharp_mask_single_channel(
-                fimg[..., channel], radius, amount, vrange)
+        for channel in range(image.shape[channel_axis]):
+            sl = utils.slice_at_axis(channel, channel_axis)
+            result[sl] = _unsharp_mask_single_channel(
+                fimg[sl], radius, amount, vrange)
         return result
     else:
         return _unsharp_mask_single_channel(fimg, radius, amount, vrange)

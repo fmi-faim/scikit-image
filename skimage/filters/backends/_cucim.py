@@ -57,7 +57,7 @@ def _assequence(x):
 
 @_implements(_skimage_filters.gaussian)
 def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
-             multichannel=None, preserve_range=False, truncate=4.0, *,
+             multichannel=False, preserve_range=False, truncate=4.0, *,
              channel_axis=None):
     if channel_axis is not None:
         if channel_axis == -1:

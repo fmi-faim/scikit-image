@@ -92,8 +92,8 @@ gaussian.__doc__ = _api.gaussian.__doc__
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
 def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
-                            mode='nearest', cval=0, multichannel=False,
-                            truncate=4.0):
+                            mode='nearest', cval=0, channel_axis=None,
+                            multichannel=False, truncate=4.0):
     return (image,)
 difference_of_gaussians.__doc__ = _api.difference_of_gaussians.__doc__
 

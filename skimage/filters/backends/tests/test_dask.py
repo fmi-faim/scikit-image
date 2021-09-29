@@ -5,7 +5,7 @@ import pytest
 from skimage import filters
 from skimage.filters.backends import dask_image
 
-modes = ['reflect', 'nearest', 'wrap', 'constant']  # 'mirror',
+modes = ['wrap', 'reflect', 'nearest', 'mirror', 'constant']
 
 
 @pytest.mark.parametrize('channel_axis', [None, 0, -1])

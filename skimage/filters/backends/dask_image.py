@@ -142,7 +142,7 @@ def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
         filters.gaussian,
         image,
         depth=depth,
-        mode=mode,
+        mode='wrap' if mode == 'wrap' else 'none',
         extra_keywords=dict(sigma=sigma,
                             mode=mode,
                             cval=cval,
@@ -188,7 +188,7 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
         filters.difference_of_gaussians,
         image,
         depth=depth,
-        mode=mode,
+        mode='wrap' if mode == 'wrap' else 'none',
         extra_keywords=dict(low_sigma=low_sigma,
                             high_sigma=high_sigma,
                             mode=mode,
@@ -200,4 +200,4 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
         )
 
 
-gaussian.__doc__ = filters.gaussian.__doc__
+difference_of_gaussians.__doc__ = filters.difference_of_gaussians.__doc__

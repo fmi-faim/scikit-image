@@ -124,7 +124,11 @@ gabor_kernel.__doc__ = _api.gabor_kernel.__doc__
 
 """ _median.py multimethods """
 
-@deprecate_kwarg(kwarg_mapping={'selem': 'footprint'}, removed_version="1.0")
+# TODO: how to properly handle deprecate_kwarg?
+# create_skimage_filters must be the outermost decorator
+
+# @deprecate_kwarg(kwarg_mapping={'selem': 'footprint'}, removed_version="1.0")
+
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
 def median(image, footprint=None, out=None, mode='nearest', cval=0.0,

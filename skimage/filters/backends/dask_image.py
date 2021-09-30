@@ -1,4 +1,5 @@
 # import cucim
+import math
 import numbers
 
 import numpy as np
@@ -18,7 +19,7 @@ _implemented = {}
 def asdask(array):
     if isinstance(array, da.Array):
         return array
-    chunks = (round((512 ** 2)**array.ndim), ) * array.ndim
+    chunks = (round((512 ** 2)**(1/array.ndim)), ) * array.ndim
     return da.asarray(array, chunks=chunks)
 
 
@@ -137,6 +138,8 @@ def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
     if output is not None:
         raise ValueError("output is unsupported")
 
+    # print(f"image.chunksize={image.chunksize}")
+
     # handled depth and sigma above, so set channel_axis to None
     return apply_parallel(
         filters.gaussian,
@@ -201,3 +204,29 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
 
 
 difference_of_gaussians.__doc__ = filters.difference_of_gaussians.__doc__
+
+
+@_implements(filters.median)
+def median(image, footprint=None, out=None, mode='nearest', cval=0.0,
+           behavior='ndimage'):
+    depth = tuple(math.ceil(s / 2) for s in footprint.shape)
+    dtype = _supported_float_type(image.dtype)
+    footprint = np.asarray(footprint)  # footprint should not be a dask array
+
+    if out is not None:
+        return NotImplemented
+
+    return apply_parallel(
+        filters.median,
+        image,
+        depth=depth,
+        mode='wrap' if mode == 'wrap' else 'none',
+        extra_keywords=dict(footprint=footprint,
+                            mode=mode,
+                            cval=cval,
+                            behavior=behavior),
+        dtype=dtype,
+        )
+
+
+median.__doc__ = filters.median.__doc__

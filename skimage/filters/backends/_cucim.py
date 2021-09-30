@@ -6,7 +6,7 @@ from cucim.skimage import filters as _cucim_filters
 
 # Backend support for skimage.filters
 
-__ua_domain__ = 'numpy.skimage.filters'
+__ua_domain__ = 'numpy.skimage'
 _implemented = {}
 
 

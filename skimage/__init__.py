@@ -136,3 +136,6 @@ else:
     from .util.lookfor import lookfor
 
 del sys
+
+from ._backend import (set_backend, skip_backend, set_global_backend,
+                       register_backend)

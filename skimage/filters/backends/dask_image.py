@@ -11,7 +11,7 @@ from skimage._shared.utils import _supported_float_type
 
 # Backend support for skimage.filters
 
-__ua_domain__ = 'numpy.skimage.filters'
+__ua_domain__ = 'numpy.skimage'
 _implemented = {}
 
 

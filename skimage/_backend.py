@@ -1,8 +1,25 @@
 import uarray as ua
-from skimage.filters import _api
+
+import skimage
+
+# TODO: remove this import once lazy loading is implemented
+#       for now have to manually import any submodules using uarray multimethods
+import skimage.filters._api
 
 
-class _ScikitImageFiltersBackend:
+def _get_from_name_domain(name, domain):
+    module = skimage
+    name_hierarchy = name.split(".")
+    domain_hierarchy = domain.split(".") + name_hierarchy[0:-1] + ['_api']
+    for d in domain_hierarchy[2:]:  # [2:] to skips numpy.skimage. in the domain
+        module = getattr(module, d)
+    if hasattr(module, name_hierarchy[-1]):
+        return getattr(module, name_hierarchy[-1])
+    else:
+        return NotImplemented
+
+
+class _ScikitImageBackend:
     """The default backend for filters calculations
 
     Notes
@@ -12,19 +29,34 @@ class _ScikitImageFiltersBackend:
     can install a single backend for ``numpy`` and have it implement
     ``numpy.skimage.filters`` as well.
     """
-    __ua_domain__ = "numpy.skimage.filters"
+    __ua_domain__ = "numpy.skimage"
 
     @staticmethod
     def __ua_function__(method, args, kwargs):
-        fn = getattr(_api, method.__name__, None)
 
-        if fn is None:
+        method = _get_from_name_domain(method.__qualname__, method.domain)
+        if method is NotImplemented:
             return NotImplemented
-        return fn(*args, **kwargs)
+        # if method is None:
+        #     return NotImplemented
+        return method(*args, **kwargs)
 
+
+def __ua_function__(method, args, kwargs):
+    if method in _implementations:
+        return _implementations[method](*args, **kwargs)
+
+    if len(args) != 0 and isinstance(args[0], unumpy.ClassOverrideMeta):
+        return NotImplemented
+
+    method_numpy = _get_from_name_domain(method.__qualname__, method.domain)
+    if method_numpy is NotImplemented:
+        return NotImplemented
+
+    return method_numpy(*args, **kwargs)
 
 _named_backends = {
-    'skimage.filters': _ScikitImageFiltersBackend,
+    'skimage': _ScikitImageBackend,
 }
 
 
@@ -37,8 +69,8 @@ def _backend_from_arg(backend):
         except KeyError as e:
             raise ValueError('Unknown backend {}'.format(backend)) from e
 
-    if backend.__ua_domain__ != 'numpy.skimage.filters':
-        raise ValueError('Backend does not implement "numpy.skimage.filters"')
+    if backend.__ua_domain__ != 'numpy.skimage':
+        raise ValueError('Backend does not implement "numpy.skimage"')
 
     return backend
 
@@ -190,4 +222,4 @@ def skip_backend(backend):
     return ua.skip_backend(backend)
 
 
-set_global_backend('skimage.filters', coerce=True, try_last=True)
+set_global_backend('skimage', coerce=True, try_last=True)

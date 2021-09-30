@@ -46,7 +46,7 @@ def _to_cv2_mode(mode, cval=0):
 
 # Backend support for skimage.filters
 
-__ua_domain__ = 'numpy.skimage.filters'
+__ua_domain__ = 'numpy.skimage'
 _implemented = {}
 
 

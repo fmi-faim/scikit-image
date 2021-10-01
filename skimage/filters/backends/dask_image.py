@@ -3,6 +3,7 @@ import math
 import numbers
 
 import numpy as np
+import uarray as ua
 import dask.array as da
 
 from skimage import filters
@@ -23,27 +24,20 @@ def asdask(array):
     return da.asarray(array, chunks=chunks)
 
 
-def __ua_convert__(dispatchables, coerce):
-    if coerce:
-        # coerce array inputs to dask arrays
-        try:
-            replaced = [
-                asdask(d.value) if d.coercible and d.type is np.ndarray
-                else d.value for d in dispatchables]
-        except TypeError:
+@ua.wrap_single_convertor
+def __ua_convert__(value, dispatch_type, coerce):
+    if value is None:
+        return None
+
+    if dispatch_type is np.ndarray:
+        if not coerce and not isinstance(value, da.Array):
             return NotImplemented
-        allowed_array_types = da.Array
-    else:
-        # np.ndarray inputs will result in np.ndarray outputs
-        # da.Array inputs will result in a dask array output
-        replaced = [d.value for d in dispatchables]
-        allowed_array_types = (np.ndarray, da.Array)
+        return asdask(value)
 
-    if not all(d.type is not np.ndarray or isinstance(r, allowed_array_types)
-               for r, d in zip(replaced, dispatchables)):
-        return NotImplemented
+    if dispatch_type is np.dtype:
+        return np.dtype(value)
 
-    return replaced
+    return value
 
 
 def __ua_function__(method, args, kwargs):

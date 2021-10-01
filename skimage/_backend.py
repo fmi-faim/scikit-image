@@ -1,13 +1,20 @@
+import numpy as np
 import uarray as ua
 
-import skimage
 
-# TODO: remove this import once lazy loading is implemented
-#       for now have to manually import any submodules using uarray multimethods
-import skimage.filters._api
+class scalar_or_array:
+    """
+    Special case argument that can be either a scalar or array
+    for __ua_convert__.
+    """
+    pass
 
 
 def _get_from_name_domain(name, domain):
+    # TODO: remove this import once lazy loading is implemented
+    #       for now have to manually import any submodules using uarray multimethods
+    import skimage.filters._api
+
     module = skimage
     name_hierarchy = name.split(".")
     domain_hierarchy = domain.split(".") + name_hierarchy[0:-1] + ['_api']
@@ -41,19 +48,28 @@ class _ScikitImageBackend:
         #     return NotImplemented
         return method(*args, **kwargs)
 
+    @ua.wrap_single_convertor
+    def __ua_convert__(value, dispatch_type, coerce):
+        if value is None:
+            return None
 
-def __ua_function__(method, args, kwargs):
-    if method in _implementations:
-        return _implementations[method](*args, **kwargs)
+        if dispatch_type is np.ndarray:
+            if not coerce and not isinstance(value, np.ndarray):
+                return NotImplemented
+            return value
 
-    if len(args) != 0 and isinstance(args[0], unumpy.ClassOverrideMeta):
-        return NotImplemented
+        if dispatch_type is np.dtype:
+            return np.dtype(value)
 
-    method_numpy = _get_from_name_domain(method.__qualname__, method.domain)
-    if method_numpy is NotImplemented:
-        return NotImplemented
+        if dispatch_type is scalar_or_array:
+            if np.isscalar(value):
+                return value
+            elif not coerce and not isinstance(value, np.ndarray):
+                return NotImplemented
+            return value
 
-    return method_numpy(*args, **kwargs)
+        return value
+
 
 _named_backends = {
     'skimage': _ScikitImageBackend,

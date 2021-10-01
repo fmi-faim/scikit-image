@@ -1,14 +1,14 @@
 import functools
+import warnings
 
+import numpy as np
 from numpy import dtype, ndarray
 from uarray import generate_multimethod, Dispatchable
 from uarray import all_of_type, create_multimethod
 from unumpy import mark_dtype
 
-
-import skimage.filters
-from .._shared.utils import deprecate_kwarg
-from skimage.filters import _api
+from skimage._backend import scalar_or_array
+from . import _api
 
 
 __all__ = ['gaussian', 'difference_of_gaussians', 'gabor', 'gabor_kernel',
@@ -24,10 +24,22 @@ __all__ = ['gaussian', 'difference_of_gaussians', 'gabor', 'gabor_kernel',
            'threshold_niblack', 'threshold_sauvola',
            'apply_hysteresis_threshold', 'threshold_multiotsu']
 
-
 create_skimage_filters = functools.partial(
     create_multimethod, domain="numpy.skimage.filters"
 )
+
+_mark_scalar_or_array = functools.partial(Dispatchable,
+                                          dispatch_type=scalar_or_array,
+                                          coercible=True)
+
+
+def _get_docs(func):
+    """
+    Decorator to take the docstring from original
+    function and assign to the multimethod.
+    """
+    func.__doc__ = getattr(_api, func.__name__).__doc__
+    return func
 
 
 def _identity_arg_replacer(args, kwargs, arrays):
@@ -72,107 +84,123 @@ def _dispatch_identity(func):
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def butterworth(image, cutoff_frequency_ratio=0.005, high_pass=True, order=2.0,
                 channel_axis=None):
     return (image,)
-butterworth.__doc__ = _api.butterworth.__doc__
 
 
 """ _gaussian.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def gaussian(image, sigma=1, output=None, mode='nearest', cval=0,
              multichannel=None, preserve_range=False, truncate=4.0, *,
              channel_axis=None):
     return (image,)
-gaussian.__doc__ = _api.gaussian.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
                             mode='nearest', cval=0, channel_axis=None,
                             multichannel=False, truncate=4.0):
     return (image,)
-difference_of_gaussians.__doc__ = _api.difference_of_gaussians.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def _guess_spatial_dimensions(image):
     return (image,)
-_guess_spatial_dimensions.__doc__ = _api._guess_spatial_dimensions.__doc__
 
 
 """ _gabor.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def gabor(image, frequency, theta=0, bandwidth=1, sigma_x=None,
           sigma_y=None, n_stds=3, offset=0, mode='reflect', cval=0):
-    return (image, )
-gabor.__doc__ = _api.gabor.__doc__
+    return (image,)
 
 
 @create_skimage_filters(_identity_arg_replacer)
+@all_of_type(dtype)
+@_get_docs
 def gabor_kernel(frequency, theta=0, bandwidth=1, sigma_x=None, sigma_y=None,
-                 n_stds=3, offset=0):
-    return
-gabor_kernel.__doc__ = _api.gabor_kernel.__doc__
+                 n_stds=3, offset=0, dtype=np.complex128):
+    return (dtype,)
 
 
 """ _median.py multimethods """
 
-# TODO: how to properly handle deprecate_kwarg?
 # create_skimage_filters must be the outermost decorator
+def _image_footprint_arg_replacer(args, kwargs, dispatchables):
+    """
+    uarray argument replacer to replace the input image (``image``) and
+    """
+    def self_method(image, *args, **kwargs):
+        kw_out = kwargs.copy()
+        if 'footprint' in kwargs:
+            kw_out['footprint'] = dispatchables[1]
+        return (dispatchables[0],) + args, kwargs
+    return self_method(*args, **kwargs)
 
-# @deprecate_kwarg(kwarg_mapping={'selem': 'footprint'}, removed_version="1.0")
 
-@create_skimage_filters(_image_arg_replacer)
+# TODO: had to add **kwargs and handle deprecated selem manually!
+#       wrapping with the multimethod breaks deprecate_kwarg decorator use.
+#       if deprecate_kwarg is used above @create_skimage_filters below, the
+#       deprecation works, but then the multimethod is found by the backends!
+
+@create_skimage_filters(_image_footprint_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def median(image, footprint=None, out=None, mode='nearest', cval=0.0,
-           behavior='ndimage'):
-    return (image,)
-median.__doc__ = _api.median.__doc__
+           behavior='ndimage', **kwargs):
+    if 'selem' in kwargs:
+        # warning not raised due to wrappers
+        warnings.warn('`selem` is a deprecated argument name')
+        footprint = kwargs.pop('selem')
+    return (image, footprint)
 
 
 """ _rank_order.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
+@_get_docs
 def rank_order(image):
     return
-rank_order.__doc__ = _api.rank_order.__doc__
 
 
 """ _sparse.py multimethods """
 
 @create_skimage_filters(_image_kernel_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def correlate_sparse(image, kernel, mode='reflect'):
-    return (image,)
-correlate_sparse.__doc__ = _api.correlate_sparse.__doc__
-
-from .._shared import utils
+    return (image, kernel)
 
 
 """ _unsharp_mask.py multimethods """
 
-@utils.deprecate_multichannel_kwarg(multichannel_position=3)
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def unsharp_mask(image, radius=1.0, amount=1.0, multichannel=False,
                  preserve_range=False, *, channel_axis=None):
     return (image,)
-unsharp_mask.__doc__ = _api.unsharp_mask.__doc__
 
 
 """ _window.py multimethods """
 
 @create_skimage_filters(_identity_arg_replacer)
+@_get_docs
 def window(window_type, shape, warp_kwargs=None):
-    return
-window.__doc__ = _api.window.__doc__
+    return ()
+
 
 
 """ edges.py multimethods """
@@ -182,109 +210,108 @@ def _image_mask_arg_replacer(args, kwargs, dispatchables):
     """
     uarray argument replacer to replace the input image (``image``) and
     """
-    def self_method(image, mask, *args, **kwargs):
-        return (dispatchables[0], dispatchables[1]) + args, kw_out
+    def self_method(image, mask=None, *args, **kwargs):
+        return (dispatchables[0], dispatchables[1]) + args, kwargs
     return self_method(*args, **kwargs)
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def sobel(image, mask=None, *, axis=None, mode='reflect', cval=0.0):
     return (image, mask)
-sobel.__doc__ = _api.sobel.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
 def sobel_h(image, mask=None):
     return (image, mask)
-sobel_h.__doc__ = _api.sobel_h.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def sobel_v(image, mask=None):
     return (image, mask)
-sobel_v.__doc__ = _api.sobel_v.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def scharr(image, mask=None, *, axis=None, mode='reflect', cval=0.0):
     return (image, mask)
-scharr.__doc__ = _api.scharr.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def scharr_h(image, mask=None):
     return (image, mask)
-scharr_h.__doc__ = _api.scharr_h.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def scharr_v(image, mask=None):
     return (image, mask)
-scharr_v.__doc__ = _api.scharr_v.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def prewitt(image, mask=None, *, axis=None, mode='reflect', cval=0.0):
     return (image, mask)
-prewitt.__doc__ = _api.prewitt.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def prewitt_h(image, mask=None):
     return (image, mask)
-prewitt_h.__doc__ = _api.prewitt_h.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def prewitt_v(image, mask=None):
     return (image, mask)
-prewitt_v.__doc__ = _api.prewitt_v.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def roberts(image, mask=None):
     return (image, mask)
-roberts.__doc__ = _api.roberts.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def roberts_pos_diag(image, mask=None):
     return (image, mask)
-roberts_pos_diag.__doc__ = _api.roberts_pos_diag.__doc__
 
 
 @create_skimage_filters(_image_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def roberts_neg_diag(image, mask=None):
     return (image, mask)
-roberts_neg_diag.__doc__ = _api.roberts_neg_diag.__doc__
 
 
 def _image_ksize_mask_arg_replacer(args, kwargs, dispatchables):
     """
     uarray argument replacer to replace the input image (``image``) and
     """
-    def self_method(image, ksize, mask, *args, **kwargs):
-        return (dispatchables[0], ksize, dispatchables[1]) + args, kw_out
+    def self_method(image, ksize=3, mask=None, *args, **kwargs):
+        return (dispatchables[0], ksize, dispatchables[1]) + args, kwargs
     return self_method(*args, **kwargs)
 
 
 @create_skimage_filters(_image_ksize_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def laplace(image, ksize=3, mask=None):
     return (image, mask)
-laplace.__doc__ = _api.laplace.__doc__
 
 
 def _image_kwarg_mask_arg_replacer(args, kwargs, dispatchables):
@@ -294,113 +321,115 @@ def _image_kwarg_mask_arg_replacer(args, kwargs, dispatchables):
     def self_method(image, *args, **kwargs):
         kwargs_out = kwargs.copy()
         kwargs_out["mask"] = dispatchables[1]
-        return (dispatchables[0],) + args, kw_out
+        return (dispatchables[0],) + args, kwargs
     return self_method(*args, **kwargs)
 
 
 @create_skimage_filters(_image_kwarg_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def farid(image, *, mask=None):
     return (image, mask)
-farid.__doc__ = _api.farid.__doc__
 
 
 @create_skimage_filters(_image_kwarg_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def farid_h(image, *, mask=None):
     return (image, mask)
-farid_h.__doc__ = _api.farid_h.__doc__
 
 
 @create_skimage_filters(_image_kwarg_mask_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def farid_v(image, *, mask=None):
     return (image, mask)
-farid_v.__doc__ = _api.farid_v.__doc__
 
 
 """ lpi_filter.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def forward(data, impulse_response=None, filter_params={},
             predefined_filter=None):
     return (data,)
-forward.__doc__ = _api.forward.__doc__
+
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def inverse(data, impulse_response=None, filter_params={}, max_gain=2,
             predefined_filter=None):
     return (data,)
-inverse.__doc__ = _api.inverse.__doc__
+
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def wiener(data, impulse_response=None, filter_params={}, K=0.25,
            predefined_filter=None):
     return (data,)
-wiener.__doc__ = _api.wiener.__doc__
 
 
 """ ridges.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def compute_hessian_eigenvalues(image, sigma, sorting='none', mode='constant',
                                 cval=0):
     return (image,)
-compute_hessian_eigenvalues.__doc__ = _api.compute_hessian_eigenvalues.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def meijering(image, sigmas=range(1, 10, 2), alpha=None, black_ridges=True,
               mode='reflect', cval=0):
     return (image,)
-meijering.__doc__ = _api.meijering.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def sato(image, sigmas=range(1, 10, 2), black_ridges=True, mode=None, cval=0):
     return (image,)
-sato.__doc__ = _api.sato.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def frangi(image, sigmas=range(1, 10, 2), scale_range=None, scale_step=None,
            alpha=0.5, beta=0.5, gamma=15, black_ridges=True, mode='reflect',
            cval=0):
     return (image,)
-frangi.__doc__ = _api.frangi.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def hessian(image, sigmas=range(1, 10, 2), scale_range=None, scale_step=None,
             alpha=0.5, beta=0.5, gamma=15, black_ridges=True, mode=None,
             cval=0):
     return (image,)
-hessian.__doc__ = _api.hessian.__doc__
 
 
 """ thresholding.py multimethods """
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def try_all_threshold(image, figsize=(8, 5), verbose=True):
     return (image,)
-try_all_threshold.__doc__ = _api.try_all_threshold.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_local(image, block_size, method='gaussian', offset=0,
                     mode='reflect', param=None, cval=0):
     return (image,)
-threshold_local.__doc__ = _api.threshold_local.__doc__
 
 
 def _image_kwarg_hist_arg_replacer(args, kwargs, dispatchables):
@@ -409,88 +438,100 @@ def _image_kwarg_hist_arg_replacer(args, kwargs, dispatchables):
     """
     def self_method(image, *args, **kwargs):
         kw_out = kwargs.copy()
-        if "hist" in kw:
+        if "hist" in kwargs:
             kw_out["hist"] = dispatchables[1]
         return (dispatchables[0],) + args, kw_out
     return self_method(*args, **kwargs)
 
 
-@create_skimage_filters(_image_kwarg_hist_arg_replacer)
+def kwarg_image_and_hist_replacer(args, kwargs, dispatchables):
+    """
+    uarray argument replacer to replace the input image (``image``) and
+    """
+    def self_method(*args, **kwargs):
+        kw_out = kwargs.copy()
+        if "image" in kwargs:
+            kw_out["image"] = dispatchables[0]
+        if "hist" in kwargs:
+            kw_out["hist"] = dispatchables[1]
+        return args, kw_out
+    return self_method(*args, **kwargs)
+
+
+@create_skimage_filters(kwarg_image_and_hist_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_otsu(image=None, nbins=256, *, hist=None):
     return (image, hist)
-threshold_otsu.__doc__ = _api.threshold_otsu.__doc__
 
 
-@create_skimage_filters(_image_kwarg_hist_arg_replacer)
+@create_skimage_filters(kwarg_image_and_hist_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_yen(image=None, nbins=256, *, hist=None):
     return (image, hist)
-threshold_yen.__doc__ = _api.threshold_yen.__doc__
 
 
-@create_skimage_filters(_image_kwarg_hist_arg_replacer)
+@create_skimage_filters(kwarg_image_and_hist_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_isodata(image=None, nbins=256, return_all=False, *, hist=None):
     return (image, hist)
-threshold_isodata.__doc__ = _api.threshold_isodata.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_li(image, *, tolerance=None, initial_guess=None,
                  iter_callback=None):
-    return (image, )
-threshold_li.__doc__ = _api.threshold_li.__doc__
+    return (image,)
 
 
-@deprecate_kwarg({'max_iter': 'max_num_iter'}, removed_version="1.0")
-@create_skimage_filters(_image_kwarg_hist_arg_replacer)
+@create_skimage_filters(kwarg_image_and_hist_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_minimum(image=None, nbins=256, max_num_iter=10000, *, hist=None):
     return (image, hist)
-threshold_minimum.__doc__ = _api.threshold_minimum.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_mean(image):
     return (image,)
-threshold_mean.__doc__ = _api.threshold_mean.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_triangle(image, nbins=256):
     return (image,)
-threshold_triangle.__doc__ = _api.threshold_triangle.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_niblack(image, window_size=15, k=0.2):
     return (image,)
-threshold_niblack.__doc__ = _api.threshold_niblack.__doc__
 
 
 @create_skimage_filters(_image_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def threshold_sauvola(image, window_size=15, k=0.2, r=None):
     return (image,)
-threshold_sauvola.__doc__ = _api.threshold_sauvola.__doc__
 
 
 # TODO: low, high can be float or ndarray
 @create_skimage_filters(_image_low_high_arg_replacer)
 @all_of_type(ndarray)
+@_get_docs
 def apply_hysteresis_threshold(image, low, high):
-    return (image, low, high)
-apply_hysteresis_threshold.__doc__ = _api.apply_hysteresis_threshold.__doc__
+    return (image, _mark_scalar_or_array(low), _mark_scalar_or_array(high))
 
 
-# TODO: low, high can be float or ndarray
-@create_skimage_filters(_image_arg_replacer)
+@create_skimage_filters(kwarg_image_and_hist_replacer)
 @all_of_type(ndarray)
-def threshold_multiotsu(image, classes=3, nbins=256):
-    return (image,)
-threshold_multiotsu.__doc__ = _api.threshold_multiotsu.__doc__
+@_get_docs
+def threshold_multiotsu(image=None, classes=3, nbins=256, hist=None):
+    return (image, hist)

@@ -168,16 +168,6 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
     if high_sigma is not None:
         high_sigma = _get_gaussian_sigmas(ndim, high_sigma)
     depth = _get_gaussian_border(ndim, high_sigma, truncate)
-    # if channel_axis is not None:
-    #     # depth = list(depth)
-    #     # depth[channel_axis] = 1
-    #     channel_axis = channel_axis % image.ndim
-    #     depth = _insert(depth, channel_axis, 0)
-    #     low_sigma = _insert(low_sigma, channel_axis, 0)
-    #     if high_sigma is not None:
-    #         high_sigma = _insert(high_sigma, channel_axis, 0)
-
-    # depth, boundary = _utils._get_depth_boundary(image.ndim, depth, "none")
     dtype = _supported_float_type(image.dtype)
 
     # handled depth and sigma above, so set channel_axis to None

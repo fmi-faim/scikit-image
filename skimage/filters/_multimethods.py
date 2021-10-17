@@ -8,7 +8,6 @@ from uarray import all_of_type, create_multimethod
 from unumpy import mark_dtype
 
 from skimage._backend import scalar_or_array
-from skimage._backend_util import _warn_on_kwarg_deprecation
 from . import _api
 
 
@@ -140,7 +139,6 @@ def gaussian(
     output=None,
     mode="nearest",
     cval=0,
-    multichannel=None,
     preserve_range=False,
     truncate=4.0,
     *,
@@ -160,7 +158,6 @@ def difference_of_gaussians(
     mode="nearest",
     cval=0,
     channel_axis=None,
-    multichannel=False,
     truncate=4.0
 ):
     return (image,)
@@ -271,7 +268,6 @@ def unsharp_mask(
     image,
     radius=1.0,
     amount=1.0,
-    multichannel=False,
     preserve_range=False,
     *,
     channel_axis=None

@@ -638,7 +638,3 @@ class TestLocalMaxima(unittest.TestCase):
         assert_equal(result, np.zeros((2, 0), dtype=np.intp))
         assert result[0].dtype == np.intp
         assert result[1].dtype == np.intp
-
-
-if __name__ == "__main__":
-    np.testing.run_module_suite()

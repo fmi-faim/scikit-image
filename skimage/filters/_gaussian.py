@@ -277,6 +277,9 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
            https://doi.org/10.1098/rspb.1980.0020
 
     """
+    # import the multimethod here for gaussian backend support
+    from skimage.filters import gaussian
+
     image = img_as_float(image)
     low_sigma = np.array(low_sigma, dtype='float', ndmin=1)
     if high_sigma is None:
@@ -310,5 +313,4 @@ def difference_of_gaussians(image, low_sigma, high_sigma=None, *,
     im2 = gaussian(image, high_sigma, mode=mode, cval=cval,
                    channel_axis=channel_axis, truncate=truncate,
                    preserve_range=False)
-
     return im1 - im2

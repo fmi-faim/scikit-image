@@ -31,7 +31,8 @@ def test_gaussian(channel_axis, coerce_input, dask_input, mode):
     if dask_input:
         image = da.asarray(image, chunks=chunks)
 
-    with set_backend(dask_image, coerce=coerce_input):
+    only = (coerce_input == True or dask_input == True)
+    with set_backend(dask_image, coerce=coerce_input, only=only):
         out = filters.gaussian(image, mode=mode, sigma=sigma,
                                channel_axis=channel_axis)
 
@@ -68,7 +69,8 @@ def test_difference_of_gaussians(channel_axis, coerce_input, dask_input, mode):
     if dask_input:
         image = da.asarray(image, chunks=chunks)
 
-    with set_backend(dask_image, coerce=coerce_input):
+    only = (coerce_input == True or dask_input == True)
+    with set_backend(dask_image, coerce=coerce_input, only=only):
         out = filters.difference_of_gaussians(
             image, mode=mode, low_sigma=low_sigma, high_sigma=high_sigma,
             channel_axis=channel_axis)

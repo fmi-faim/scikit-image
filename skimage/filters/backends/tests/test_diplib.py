@@ -29,7 +29,8 @@ def test_gaussian(channel_axis, mode, ndim):
     expected_output = filters.gaussian(
         image, sigma=sigma, mode=mode, channel_axis=channel_axis)
 
-    with set_backend(diplib, coerce=False):
+    only = mode != 'reflect'  # reflect unimplemented in diplib
+    with set_backend(diplib, coerce=False, only=only):
         out = filters.gaussian(image, mode=mode, sigma=sigma,
                                channel_axis=channel_axis)
     assert isinstance(out, np.ndarray)
@@ -54,7 +55,8 @@ def test_median(mode, ndim, footprint_type):
             footprint = footprints.ball(2)
     expected_output = filters.median(image, footprint, mode=mode)
 
-    with set_backend(diplib, coerce=False):
+    only = mode != 'reflect'  # reflect unimplemented in diplib
+    with set_backend(diplib, coerce=False, only=only):
         out = filters.median(image, footprint, mode=mode)
     assert isinstance(out, np.ndarray)
     np.testing.assert_allclose(expected_output, out)

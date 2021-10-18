@@ -1,15 +1,12 @@
 # import cucim
 from warnings import warn
 
-import diplib
-import cupy as cp
 import numpy as np
 
 import skimage.morphology as _skimage_morphology
-from skimage._shared.utils import convert_to_float, warn
 
 try:
-    import diplib
+    import diplib as dip
     have_diplib = True
     ndi_mode_translation_dict = dict(
         constant='add zeros',
@@ -38,7 +35,7 @@ def _to_diplib_mode(mode, cval=0):
 
 # Backend support for skimage.filters
 
-__ua_domain__ = 'numpy.skimage'
+__ua_domain__ = 'numpy.skimage.morphology'
 _implemented = {}
 
 
@@ -61,21 +58,18 @@ def __ua_convert__(dispatchables, coerce):
 
 def __ua_function__(method, args, kwargs):
     fn = _implemented.get(method, None)
+    print(f"fn={fn}")
     if fn is None:
+        print(f"_implemented={_implemented}, method={method}")
         return NotImplemented
-
-    # may need warnings or errors related to API changes here
-    #if 'multichannel' in kwargs and not _skimage_1_0:
-    #    warnings.warn('The \'multichannel\' argument is not supported for scikit-image >= 1.0')
     return fn(*args, **kwargs)
 
 
-def _implements(scipy_func):
+def _implements(skimage_func):
     """Decorator adds function to the dictionary of implemented functions"""
     def inner(func):
-        _implemented[scipy_func] = func
+        _implemented[skimage_func] = func
         return func
-
     return inner
 
 
@@ -108,9 +102,6 @@ def binary_erosion(image, footprint=None, out=None):
     return output
 
 
-binary_erosion.__doc__ = _skimage_morphology.binary_erosion.__doc__
-
-
 @_implements(_skimage_morphology.binary_dilation)
 def binary_dilation(image, footprint=None, out=None):
 
@@ -138,6 +129,3 @@ def binary_dilation(image, footprint=None, out=None):
         se=selem,
         boundaryCondition=["add min"] * image.ndim)
     return output
-
-
-binary_dilation.__doc__ = _skimage_morphology.binary_dilation.__doc__

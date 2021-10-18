@@ -30,7 +30,7 @@ def test_binary_erosion_and_dilation(ndim, footprint_type, morph_func):
 
     expected_output = morph_func(image, footprint)
 
-    with set_backend(diplib, coerce=False):
+    with set_backend(diplib, coerce=False, only=True):
         out = morph_func(image, footprint)
     assert isinstance(out, np.ndarray)
     np.testing.assert_allclose(expected_output, out)

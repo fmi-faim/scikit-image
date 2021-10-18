@@ -1,7 +1,6 @@
 # import cucim
 from warnings import warn
 
-import cupy as cp
 import numpy as np
 
 import skimage.filters as _skimage_filters
@@ -46,7 +45,7 @@ def _to_cv2_mode(mode, cval=0):
 
 # Backend support for skimage.filters
 
-__ua_domain__ = 'numpy.skimage'
+__ua_domain__ = 'numpy.skimage.filters'
 _implemented = {}
 
 
@@ -77,10 +76,10 @@ def __ua_function__(method, args, kwargs):
     return fn(*args, **kwargs)
 
 
-def _implements(scipy_func):
+def _implements(skimage_func):
     """Decorator adds function to the dictionary of implemented functions"""
     def inner(func):
-        _implemented[scipy_func] = func
+        _implemented[skimage_func] = func
         return func
 
     return inner

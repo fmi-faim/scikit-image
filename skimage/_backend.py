@@ -1,5 +1,16 @@
+import functools
+
 import numpy as np
 import uarray as ua
+
+
+class image_output:
+    """
+    Special case outputs to handle multiple types in __ua_convert__.
+    Eg: output='f', output='float32', output=np.float32
+        are all acceptable in addition to arrays.
+    """
+    pass
 
 
 class scalar_or_array:
@@ -8,6 +19,16 @@ class scalar_or_array:
     for __ua_convert__.
     """
     pass
+
+
+_mark_output = functools.partial(ua.Dispatchable,
+                                 dispatch_type=image_output,
+                                 coercible=False)
+
+
+_mark_scalar_or_array = functools.partial(
+    ua.Dispatchable, dispatch_type=scalar_or_array, coercible=True
+)
 
 
 def _get_from_name_domain(name, domain):
@@ -85,7 +106,7 @@ def _backend_from_arg(backend):
         except KeyError as e:
             raise ValueError('Unknown backend {}'.format(backend)) from e
 
-    if backend.__ua_domain__ != 'numpy.skimage':
+    if not backend.__ua_domain__.startswith('numpy.skimage'):
         raise ValueError('Backend does not implement "numpy.skimage"')
 
     return backend

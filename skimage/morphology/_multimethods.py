@@ -7,7 +7,7 @@ from uarray import generate_multimethod, Dispatchable
 from uarray import all_of_type, create_multimethod
 from unumpy import mark_dtype
 
-from skimage._backend import scalar_or_array
+from skimage._backend import _mark_output, scalar_or_array
 from . import _api
 
 
@@ -64,11 +64,6 @@ create_skimage_morphology = functools.partial(
 _mark_scalar_or_array = functools.partial(
     Dispatchable, dispatch_type=scalar_or_array, coercible=True
 )
-
-_mark_non_coercible = functools.partial(
-    Dispatchable, dispatch_type=np.ndarray, coercible=False
-)
-
 
 def _get_docs(func):
     """
@@ -345,42 +340,42 @@ def ball(radius, dtype='uint8'):
 @all_of_type(ndarray)
 @_get_docs
 def binary_closing(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_kw_footprint_out_replacer)
 @all_of_type(ndarray)
 @_get_docs
 def binary_dilation(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_kw_footprint_out_replacer)
 @all_of_type(ndarray)
 @_get_docs
 def binary_erosion(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_kw_footprint_out_replacer)
 @all_of_type(ndarray)
 @_get_docs
 def binary_opening(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_kw_footprint_out_replacer)
 @all_of_type(ndarray)
 @_get_docs
 def black_tophat(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_kw_footprint_out_replacer)
 @all_of_type(ndarray)
 @_get_docs
 def closing(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_replacer)
@@ -445,7 +440,7 @@ def diamond(radius, dtype='uint8'):
 @all_of_type(ndarray)
 @_get_docs
 def dilation(image, footprint=None, out=None, shift_x=False, shift_y=False):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_radius_kw_dtype_replacer)
@@ -459,7 +454,7 @@ def disk(radius, dtype='uint8'):
 @all_of_type(ndarray)
 @_get_docs
 def erosion(image, footprint=None, out=None, shift_x=False, shift_y=False):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_image_seedpoint_kwonly_footprint_replacer)
@@ -562,7 +557,7 @@ def octahedron(radius, dtype='uint8'):
 @all_of_type(ndarray)
 @_get_docs
 def opening(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))
 
 
 @create_skimage_morphology(_seed_mask_kw_method_footprint_offset_replacer)
@@ -587,7 +582,7 @@ def rectangle(nrows, ncols, dtype='uint8'):
 def remove_small_holes(
     ar, area_threshold=64, connectivity=1, *, out=None
 ):
-    return (ar, _mark_non_coercible(out))
+    return (ar, _mark_output(out))
 
 
 @create_skimage_morphology(
@@ -598,7 +593,7 @@ def remove_small_holes(
 def remove_small_objects(
     ar, min_size=64, connectivity=1, *, out=None
 ):
-    return (ar, _mark_non_coercible(out))
+    return (ar, _mark_output(out))
 
 
 @create_skimage_morphology(_image_replacer)
@@ -640,4 +635,4 @@ def thin(image, max_num_iter=None):
 @all_of_type(ndarray)
 @_get_docs
 def white_tophat(image, footprint=None, out=None):
-    return (image, footprint, _mark_non_coercible(out))
+    return (image, footprint, _mark_output(out))

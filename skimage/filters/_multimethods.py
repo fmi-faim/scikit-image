@@ -7,7 +7,7 @@ from uarray import generate_multimethod, Dispatchable
 from uarray import all_of_type, create_multimethod
 from unumpy import mark_dtype
 
-from skimage._backend import scalar_or_array
+from skimage._backend import _mark_output, _mark_scalar_or_array
 from . import _api
 
 
@@ -62,10 +62,6 @@ __all__ = [
 
 create_skimage_filters = functools.partial(
     create_multimethod, domain="numpy.skimage.filters"
-)
-
-_mark_scalar_or_array = functools.partial(
-    Dispatchable, dispatch_type=scalar_or_array, coercible=True
 )
 
 
@@ -144,7 +140,7 @@ def gaussian(
     *,
     channel_axis=None
 ):
-    return (image,)
+    return (image, _mark_output(output))
 
 
 @create_skimage_filters(_image_arg_replacer)
@@ -236,7 +232,7 @@ def _image_footprint_arg_replacer(args, kwargs, dispatchables):
 def median(
     image, footprint=None, out=None, mode="nearest", cval=0.0, behavior="ndimage"
 ):
-    return (image, footprint)
+    return (image, footprint, _mark_output(out))
 
 
 """ _rank_order.py multimethods """

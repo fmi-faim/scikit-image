@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import functools
 
 import numpy as np
@@ -106,8 +107,19 @@ def _backend_from_arg(backend):
         except KeyError as e:
             raise ValueError('Unknown backend {}'.format(backend)) from e
 
-    if not backend.__ua_domain__.startswith('numpy.skimage'):
-        raise ValueError('Backend does not implement "numpy.skimage"')
+    if isinstance(backend.__ua_domain__, str):
+        if not backend.__ua_domain__.startswith('numpy.skimage'):
+            raise ValueError(
+                f'Backend does not implement "numpy.skimage".'
+                f'found __ua_domain__ = {__ua_domain__}'
+            )
+    elif isinstance(backend.__ua_domain__, Sequence):
+        for domain in backend.__ua_domain__:
+            if not domain.startswith('numpy.skimage'):
+                raise ValueError(
+                    f'__ua_domain__ entries must start with "numpy.skimage."'
+                    f'found __ua_domain__ = {__ua_domain__}'
+                )
 
     return backend
 

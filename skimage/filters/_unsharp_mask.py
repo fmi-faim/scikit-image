@@ -3,11 +3,11 @@ import numpy as np
 from skimage import img_as_float
 
 from .._shared import utils
-from ..filters import gaussian
 
 
 def _unsharp_mask_single_channel(image, radius, amount, vrange):
     """Single channel implementation of the unsharp masking filter."""
+    from ..filters import gaussian  # avoid circular import
 
     blurred = gaussian(image, sigma=radius, mode='reflect')
 

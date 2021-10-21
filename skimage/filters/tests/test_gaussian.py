@@ -4,8 +4,8 @@ from numpy.testing import assert_array_equal, assert_equal
 
 from skimage._shared._warnings import expected_warnings
 from skimage._shared.utils import _supported_float_type
-from skimage.filters._gaussian import (_guess_spatial_dimensions,
-                                       difference_of_gaussians, gaussian)
+from skimage.filters import difference_of_gaussians, gaussian
+from skimage.filters._gaussian import _guess_spatial_dimensions
 
 
 def test_negative_sigma():
@@ -82,21 +82,6 @@ def test_multichannel(channel_axis):
                        gaussian_rgb_a.mean(axis=spatial_axes))
 
 
-def test_deprecated_multichannel():
-    a = np.zeros((5, 5, 3))
-    a[1, 1] = np.arange(1, 4)
-    with expected_warnings(["`multichannel` is a deprecated argument"]):
-        gaussian_rgb_a = gaussian(a, sigma=1, mode='reflect',
-                                  multichannel=True)
-    # Check that the mean value is conserved in each channel
-    # (color channels are not mixed together)
-    assert np.allclose(a.mean(axis=(0, 1)), gaussian_rgb_a.mean(axis=(0, 1)))
-
-    # check positional multichannel argument warning
-    with expected_warnings(["Providing the `multichannel` argument"]):
-        gaussian_rgb_a = gaussian(a, 1, None, 'reflect', 0, True)
-
-
 def test_preserve_range():
     """Test preserve_range parameter."""
     ones = np.ones((2, 2), dtype=np.int64)
@@ -162,12 +147,16 @@ def test_output_error():
 
 @pytest.mark.parametrize("s", [1, (2, 3)])
 @pytest.mark.parametrize("s2", [4, (5, 6)])
-def test_difference_of_gaussians(s, s2):
+@pytest.mark.parametrize("channel_axis", [None, 0, 1, -1])
+def test_difference_of_gaussians(s, s2, channel_axis):
     image = np.random.rand(10, 10)
-    im1 = gaussian(image, s, preserve_range=True)
-    im2 = gaussian(image, s2, preserve_range=True)
+    if channel_axis is not None:
+        n_channels = 5
+        image = np.stack((image,) * n_channels, channel_axis)
+    im1 = gaussian(image, s, preserve_range=True, channel_axis=channel_axis)
+    im2 = gaussian(image, s2, preserve_range=True, channel_axis=channel_axis)
     dog = im1 - im2
-    dog2 = difference_of_gaussians(image, s, s2)
+    dog2 = difference_of_gaussians(image, s, s2, channel_axis=channel_axis)
     assert np.allclose(dog, dog2)
 
 
@@ -188,9 +177,6 @@ def test_dog_invalid_sigma_dims():
         difference_of_gaussians(image, (1, 2))
     with pytest.raises(ValueError):
         difference_of_gaussians(image, 1, (3, 4))
-    with pytest.raises(ValueError):
-        with expected_warnings(["`multichannel` is a deprecated argument"]):
-            difference_of_gaussians(image, (1, 2, 3), multichannel=True)
     with pytest.raises(ValueError):
         difference_of_gaussians(image, (1, 2, 3), channel_axis=-1)
 

@@ -1,13 +1,12 @@
 import functools
 
 import numpy as np
-from scipy.ndimage import uniform_filter, gaussian_filter
+from scipy.ndimage import uniform_filter
 
 from .._shared import utils
 from .._shared.utils import _supported_float_type, check_shape_equality, warn
-from ..util.dtype import dtype_range
 from ..util.arraycrop import crop
-
+from ..util.dtype import dtype_range
 
 __all__ = ['structural_similarity']
 
@@ -98,6 +97,8 @@ def structural_similarity(im1, im2,
        :DOI:`10.1007/s10043-009-0119-z`
 
     """
+    from ..filters import gaussian  # avoid circular import
+
     check_shape_equality(im1, im2)
     float_type = _supported_float_type(im1.dtype)
 
@@ -188,7 +189,7 @@ def structural_similarity(im1, im2,
     ndim = im1.ndim
 
     if gaussian_weights:
-        filter_func = gaussian_filter
+        filter_func = gaussian
         filter_args = {'sigma': sigma, 'truncate': truncate}
     else:
         filter_func = uniform_filter

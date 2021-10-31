@@ -6,6 +6,7 @@ from scipy.cluster.vq import kmeans2
 from scipy.spatial.distance import pdist, squareform
 
 from .._shared import utils
+from .._shared.filters import gaussian
 from ..color import rgb2lab
 from ..filters import gaussian
 from ..util import img_as_float, regular_grid
@@ -169,10 +170,11 @@ def slic(image, n_segments=100, compactness=10., max_num_iter=10, sigma=0,
 
         .. versionadded:: 0.17
            ``start_label`` was introduced in 0.17
-    mask : 2D ndarray, optional
+    mask : ndarray, optional
         If provided, superpixels are computed only where mask is True,
         and seed points are homogeneously distributed over the mask
-        using a K-means clustering strategy.
+        using a k-means clustering strategy. Mask number of dimensions
+        must be equal to image number of spatial dimensions.
 
         .. versionadded:: 0.17
            ``mask`` was introduced in 0.17
@@ -211,7 +213,7 @@ def slic(image, n_segments=100, compactness=10., max_num_iter=10, sigma=0,
 
     * Images of shape (M, N, 3) are interpreted as 2D RGB images by default. To
       interpret them as 3D with the last dimension having length 3, use
-      `channel_axis=-1`.
+      `channel_axis=None`.
 
     * `start_label` is introduced to handle the issue [4]_. Label indexing
       starts at 1 by default.
@@ -306,7 +308,7 @@ def slic(image, n_segments=100, compactness=10., max_num_iter=10, sigma=0,
     if (sigma > 0).any():
         # add zero smoothing for multichannel dimension
         sigma = list(sigma) + [0]
-        image = gaussian(image, sigma)
+        image = gaussian(image, sigma, mode='reflect')
 
     n_centroids = centroids.shape[0]
     segments = np.ascontiguousarray(np.concatenate(

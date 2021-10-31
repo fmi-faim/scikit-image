@@ -1,8 +1,8 @@
 import numpy as np
 
+from .._shared.filters import gaussian
 from .._shared.utils import _supported_float_type
 from ..color import rgb2lab
-from ..filters import gaussian
 from ..util import img_as_float
 from ._quickshift_cy import _quickshift_cython
 
@@ -67,7 +67,11 @@ def quickshift(image, ratio=1.0, kernel_size=5, max_dist=10,
     if kernel_size < 1:
         raise ValueError("`kernel_size` should be >= 1.")
 
+<<<<<<< HEAD
     image = gaussian(image, [sigma, sigma, 0])
+=======
+    image = gaussian(image, [sigma, sigma, 0], mode='reflect', channel_axis=-1)
+>>>>>>> use-filters-gaussian
     image = np.ascontiguousarray(image * ratio)
 
     segment_mask = _quickshift_cython(

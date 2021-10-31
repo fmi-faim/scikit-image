@@ -23,8 +23,6 @@ from ._multimethods import (threshold_local, threshold_otsu, threshold_yen,
                             apply_hysteresis_threshold)
 from .lpi_filter import LPIFilter2D
 from . import rank
-# from ._backend import (set_backend, skip_backend, set_global_backend,
-#                        register_backend)
 
 
 __all__ = ['inverse',

@@ -4,9 +4,9 @@ import numpy as np
 from numpy import arctan2, exp, pi, sqrt
 
 from .. import draw, img_as_float
+from .._shared.filters import gaussian
 from .._shared.utils import check_nD
 from ..color import gray2rgb
-from ..filters import gaussian
 
 
 def daisy(image, step=4, radius=15, rings=3, histograms=8, orientations=8,
@@ -143,7 +143,12 @@ def daisy(image, step=4, radius=15, rings=3, histograms=8, orientations=8,
     hist_smooth = np.empty((rings + 1,) + hist.shape, dtype=float_dtype)
     for i in range(rings + 1):
         for j in range(orientations):
+<<<<<<< HEAD
             hist_smooth[i, j, :, :] = gaussian(hist[j, :, :], sigma=sigmas[i])
+=======
+            hist_smooth[i, j, :, :] = gaussian(hist[j, :, :], sigma=sigmas[i],
+                                               mode='reflect')
+>>>>>>> use-filters-gaussian
 
     # Assemble descriptor grid.
     theta = [2 * pi * j / histograms for j in range(histograms)]

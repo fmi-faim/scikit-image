@@ -154,13 +154,9 @@ class BRIEF(DescriptorExtractor):
         image = _prepare_grayscale_input_2D(image)
 
         # Gaussian low-pass filtering to alleviate noise sensitivity
-<<<<<<< HEAD
-        image = np.ascontiguousarray(gaussian(image, self.sigma))
-=======
         image = np.ascontiguousarray(
             gaussian(image, self.sigma, mode='reflect')
         )
->>>>>>> use-filters-gaussian
 
         # Sampling pairs of decision pixels in patch_size x patch_size window
         desc_size = self.descriptor_size

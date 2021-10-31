@@ -159,13 +159,6 @@ def difference_of_gaussians(
     return (image,)
 
 
-@create_skimage_filters(_image_arg_replacer)
-@all_of_type(ndarray)
-@_get_docs
-def _guess_spatial_dimensions(image):
-    return (image,)
-
-
 """ _gabor.py multimethods """
 
 

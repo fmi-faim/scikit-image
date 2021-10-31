@@ -1,7 +1,6 @@
 from ._multimethods import butterworth
 from ._multimethods import gabor, gabor_kernel
-from ._multimethods import (gaussian, _guess_spatial_dimensions,
-                            difference_of_gaussians)
+from ._multimethods import gaussian, difference_of_gaussians
 from ._multimethods import median
 from ._multimethods import rank_order
 from ._multimethods import correlate_sparse

@@ -1,7 +1,7 @@
 from ._fft_based import butterworth
 from ._gabor import gabor, gabor_kernel
-from ._gaussian import (gaussian, _guess_spatial_dimensions,
-                        difference_of_gaussians)
+from ._gaussian import difference_of_gaussians, gaussian
+
 from ._median import median
 from ._rank_order import rank_order
 from ._sparse import correlate_sparse

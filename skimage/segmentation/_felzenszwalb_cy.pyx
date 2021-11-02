@@ -54,12 +54,8 @@ def _felzenszwalb_cython(image, double scale=1, sigma=0.8,
 
     # rescale scale to behave like in reference implementation
     scale = float(scale) / 255.
-<<<<<<< HEAD
-    image = gaussian(image, sigma=[sigma, sigma, 0])
-=======
     image = gaussian(image, sigma=[sigma, sigma, 0], mode='reflect',
                      channel_axis=-1)
->>>>>>> use-filters-gaussian
     height, width = image.shape[:2]
 
     # compute edge weights in 8 connectivity:

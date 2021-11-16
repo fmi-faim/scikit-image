@@ -79,6 +79,19 @@ jobs:
         with:
           python-version: '3.7'
 
+      # need choco for
+      - uses: crazy-max/ghaction-chocolatey@v1
+        name: Choco help
+        with:
+          args: -h
+
+      # install clang-cl
+      - name: Install clang-cl
+        run: |
+          choco install llvm
+          SET PATH="C:\\Program Files\\LLVM\\bin;%PATH%"
+          SET PATH="C:\\Program Files (x86)\\LLVM\\bin;%PATH%"
+
       - name: Install cibuildwheel
         run: |
           python -m pip install cibuildwheel

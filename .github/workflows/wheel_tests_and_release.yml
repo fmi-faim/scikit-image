@@ -42,7 +42,7 @@ jobs:
       # install clang-cl (needed for Pythran)
       - name: Install clang-cl
         run: |
-          choco install --x86 llvm
+          choco install --force --x86 llvm
           SET PATH="C:\\Program Files\\LLVM\\bin;%PATH%"
           SET PATH="C:\\Program Files (x86)\\LLVM\\bin;%PATH%"
 

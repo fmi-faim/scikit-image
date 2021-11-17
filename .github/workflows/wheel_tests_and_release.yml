@@ -37,6 +37,8 @@ jobs:
       # install choco package manager
       - uses: crazy-max/ghaction-chocolatey@v1
         name: Install chocolatey
+        with:
+          args: -h
 
       # install x86 clang-cl (needed for Pythran)
       - name: Install x86 clang-cl

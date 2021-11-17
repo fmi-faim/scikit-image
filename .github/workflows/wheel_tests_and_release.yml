@@ -40,13 +40,13 @@ jobs:
 
       # install x86 clang-cl (needed for Pythran)
       - name: Install x86 clang-cl
-        if: matrix.cibw_arch == "x86"
+        if: matrix.cibw_arch == 'x86'
         run: |
           choco install --force --x86 llvm
 
       # install clang-cl (needed for Pythran)
       - name: Install clang-cl
-        if: matrix.cibw_arch == "ARM64"
+        if: matrix.cibw_arch == 'ARM64'
         run: |
           choco install --force llvm
 
@@ -59,7 +59,7 @@ jobs:
 
       - name: Build Windows wheels for CPython 3.10
         # NumPy dropped x86 wheels for Python 3.10
-        if: matrix.cibw_arch == "ARM64"
+        if: matrix.cibw_arch == 'ARM64'
         run: |
           python -m cibuildwheel --output-dir dist
         env:

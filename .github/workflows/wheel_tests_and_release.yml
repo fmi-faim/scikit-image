@@ -48,7 +48,7 @@ jobs:
 
       # install clang-cl (needed for Pythran)
       - name: Install clang-cl
-        if: matrix.cibw_arch == 'ARM64'
+        if: matrix.cibw_arch == 'AMD64'
         run: |
           choco install --force llvm
 

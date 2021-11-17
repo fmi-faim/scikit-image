@@ -64,7 +64,7 @@ jobs:
           python -m cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: "cp310-*"
-          CIBW_ARCHS_WINDOWS: {{ matrix.cibw_arch }}
+          CIBW_ARCHS_WINDOWS: ${{ matrix.cibw_arch }}
 
       - name: Build Windows wheels for CPython
         run: |
@@ -72,7 +72,7 @@ jobs:
         env:
           CIBW_BUILD: "cp3?-*"
           CIBW_SKIP: "cp36-*"
-          CIBW_ARCHS_WINDOWS: {{ matrix.cibw_arch }}
+          CIBW_ARCHS_WINDOWS: ${{ matrix.cibw_arch }}
 
       - uses: actions/upload-artifact@v2
         with:

@@ -68,7 +68,7 @@ dtype_limits
 
 """
 
-__version__ = '0.19.0rc0'
+__version__ = '0.20.0.dev0'
 
 submodules = [
     'color',

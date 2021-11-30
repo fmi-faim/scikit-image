@@ -179,8 +179,9 @@ jobs:
         cibw_python: [ "cp38-*", "cp39-*", "cp310-*" ]
         cibw_arch: [ "arm64" ]
 
+    # arm64 requires MACOSX_DEPLOYMENT_TARGET >= 11.0
     env:
-      MACOSX_DEPLOYMENT_TARGET: "10.13"
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       - uses: actions/checkout@v2
         with:

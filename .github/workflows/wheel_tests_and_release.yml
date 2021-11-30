@@ -109,20 +109,16 @@ jobs:
       matrix:
         os: [macos-latest]
         cibw_python: [ "cp37-*", "cp38-*", "cp39-*", "cp310-*" ]
-        # TODO: add "arm64", "universal2" here
-        #       once a universal2 version of libomp is available
-        #       For now, a separate arm64 job is being used instead.
-        cibw_arch: [ "x86_64"]
-        # exclude:
-        #   - os: macos-latest
-        #     cibw_python: "cp37-*"
-        #     cibw_arch: arm64
+        # TODO: add "universal2" once a universal2 libomp is available
+        cibw_arch: [ "x86_64", "arm64"]
+        exclude:
+          - os: macos-latest
+            cibw_python: "cp37-*"
+            cibw_arch: arm64
         #   - os: macos-latest
         #     cibw_python: "cp37-*"
         #     cibw_arch: universal2
 
-    env:
-      MACOSX_DEPLOYMENT_TARGET: "10.13"
     steps:
       - uses: actions/checkout@v2
         with:
@@ -145,7 +141,16 @@ jobs:
           # supported macos version is: High Sierra / 10.13. When upgrading
           # this, be sure to update the MACOSX_DEPLOYMENT_TARGET environment
           # variable accordingly. Note that Darwin_17 == High Sierra / 10.13.
-          wget https://packages.macports.org/libomp/libomp-11.0.1_0+universal.darwin_17.i386-x86_64.tbz2 -O libomp.tbz2
+          if [[ "$CIBW_BUILD" == *-macosx_arm64 ]]; then
+              # SciPy requires 12.0 on arm to prevent kernel panics
+              # https://github.com/scipy/scipy/issues/14688
+              # so being conservative, we just do the same here
+              export MACOSX_DEPLOYMENT_TARGET=12.0
+              wget https://packages.macports.org/libomp/libomp-11.0.1_0.darwin_20.arm64.tbz2 -O libomp.tbz2
+          else
+              export MACOSX_DEPLOYMENT_TARGET=10.13
+              wget https://packages.macports.org/libomp/libomp-11.0.1_0+universal.darwin_17.i386-x86_64.tbz2 -O libomp.tbz2
+          fi
           sudo tar -C / -xvjf libomp.tbz2 opt
           python -m cibuildwheel --output-dir dist
         env:
@@ -153,65 +158,7 @@ jobs:
           CIBW_ARCHS_MACOS: ${{ matrix.cibw_arch }}
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
           CIBW_MANYLINUX_I686_IMAGE: manylinux1
-          # CIBW_BEFORE_BUILD: pip install certifi numpy==1.19.3
-          CC: /usr/bin/clang
-          CXX: /usr/bin/clang++
-          CPPFLAGS: "-Xpreprocessor -fopenmp"
-          CFLAGS: "-Wno-implicit-function-declaration -I/opt/local/include/libomp"
-          CXXFLAGS: "-I/opt/local/include/libomp"
-          LDFLAGS: "-Wl,-rpath,/opt/local/lib/libomp -L/opt/local/lib/libomp -lomp"
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: wheels
-          path: ./dist/*.whl
-
-
-  # TODO: remove this job and enable arm64 in the macos case above once we have
-  #       a universal2 libomp available
-  build_macos_arm64_wheels:
-    name: Build python ${{ matrix.cibw_python }} ${{ matrix.cibw_arch }} wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest]
-        cibw_python: [ "cp38-*", "cp39-*", "cp310-*" ]
-        cibw_arch: [ "arm64" ]
-
-    # arm64 requires MACOSX_DEPLOYMENT_TARGET >= 11.0
-    env:
-      MACOSX_DEPLOYMENT_TARGET: "11.0"
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v2
-        name: Install Python
-        with:
-          python-version: '3.9'
-
-      - name: Install cibuildwheel
-        run: |
-          python -m pip install cibuildwheel
-      - name: Build wheels for CPython Mac OS
-        run: |
-          # Make sure to use a libomp version binary compatible with the oldest
-          # supported version of the macos SDK as libomp will be vendored into
-          # the scikit-image wheels for macos. The list of binaries are in
-          # https://packages.macports.org/libomp/.  Currently, the oldest
-          # supported macos version is: High Sierra / 10.13. When upgrading
-          # this, be sure to update the MACOSX_DEPLOYMENT_TARGET environment
-          # variable accordingly. Note that Darwin_17 == High Sierra / 10.13.
-          wget https://packages.macports.org/libomp/libomp-11.0.1_0.darwin_20.arm64.tbz2 -O libomp.tbz2
-          sudo tar -C / -xvjf libomp.tbz2 opt
-          python -m cibuildwheel --output-dir dist
-        env:
-          CIBW_BUILD: ${{ matrix.cibw_python }}
-          CIBW_ARCHS_MACOS: ${{ matrix.cibw_arch }}
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
-          CIBW_MANYLINUX_I686_IMAGE: manylinux1
+          CIBW_TEST_SKIP: "*-macosx_arm64"
           # CIBW_BEFORE_BUILD: pip install certifi numpy==1.19.3
           CC: /usr/bin/clang
           CXX: /usr/bin/clang++

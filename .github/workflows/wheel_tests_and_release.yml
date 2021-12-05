@@ -151,6 +151,8 @@ jobs:
               export MACOSX_DEPLOYMENT_TARGET=10.13
               wget https://packages.macports.org/libomp/libomp-11.0.1_0+universal.darwin_17.i386-x86_64.tbz2 -O libomp.tbz2
           fi
+          echo CIBW_BUILD=${CIBW_BUILD}
+          echo MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}
           sudo tar -C / -xvjf libomp.tbz2 opt
           python -m cibuildwheel --output-dir dist
         env:

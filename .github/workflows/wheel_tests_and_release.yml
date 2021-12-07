@@ -41,7 +41,6 @@ jobs:
           python -m pip install cibuildwheel
       - name: Build the wheel
         run: |
-
           python -m cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: ${{ matrix.cibw_python }}
@@ -51,6 +50,7 @@ jobs:
           CIBW_MANYLINUX_I686_IMAGE: ${{ matrix.cibw_manylinux }}
           # export SKIMAGE_LINK_FLAGS="-Wl,--strip-debug"
           CIBW_ENVIRONMENT: "PIP_PREFER_BINARY=1 LDFLAGS='-Wl,--strip-debug'"
+          CIBW_ENVIRONMENT_PASS_LINUX: LDFLAGS
           # unsure why just setting LDFLAGS here had no effect
           # SKIMAGE_LINK_FLAGS: "-Wl,--strip-debug"
       - uses: actions/upload-artifact@v2

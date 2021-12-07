@@ -41,7 +41,7 @@ jobs:
           python -m pip install cibuildwheel
       - name: Build the wheel
         run: |
-          LDFLAGS='-Wl,--strip-debug' python -m cibuildwheel --output-dir dist
+          python -m cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: ${{ matrix.cibw_python }}
           CIBW_ARCHS_LINUX: ${{ matrix.cibw_arch }}

@@ -221,6 +221,13 @@ def setup_test():
         warnings.filterwarnings(
             'default', message='TiffWriter:', category=DeprecationWarning
         )
+        # newer tifffile change the start of the warning string
+        # e.g. <tifffile.TiffWriter.write> data with shape ...
+        warnings.filterwarnings(
+            'default',
+            message='<tifffile.',
+            category=DeprecationWarning
+        )
 
         warnings.filterwarnings(
             'default', message='unclosed file', category=ResourceWarning
@@ -252,8 +259,9 @@ def setup_test():
             module='skimage.io'
         )
 
+        # match both "Viewer requires Qt" and "Viewer requires matplotlib"
         warnings.filterwarnings(
-            'default', message='Viewer requires Qt', category=UserWarning
+            'default', message='Viewer requires ', category=UserWarning
         )
 
         warnings.filterwarnings(

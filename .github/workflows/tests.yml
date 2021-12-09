@@ -104,6 +104,7 @@ jobs:
             TEST_EXAMPLES: ${{ matrix.TEST_EXAMPLES }}
             OPTIONAL_DEPS: ${{ matrix.OPTIONAL_DEPS }}
             EAGER_IMPORT: ${{ matrix.EAGER_IMPORT }}
+            SKIMAGE_TEST_STRICT_WARNINGS_GLOBAL: ${{ matrix.SKIMAGE_TEST_STRICT_WARNINGS_GLOBAL }}
         run: |
             echo $PIP_FLAGS
             pip install $PIP_FLAGS -r requirements/test.txt

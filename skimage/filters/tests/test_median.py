@@ -27,7 +27,7 @@ def image():
 def test_median_warning(image, mode, cval, behavior,
                         n_warning, warning_type):
 
-    with pytest.warns(None) as records:
+    with pytest.warns() as records:
         median(image, mode=mode, behavior=behavior)
 
     assert len(records) == n_warning

@@ -68,7 +68,7 @@ def test_remove_argument():
     assert str(record[0].message) == expected_msg
 
     # Assert that nothing happens if arg1 is set
-    with pytest.warns(None) as record:
+    with pytest.warns() as record:
         # No kwargs
         assert foo(0) == (0, 0, 1)
         assert foo(0, arg2=0) == (0, 0, 0)
@@ -110,7 +110,7 @@ def test_change_default_value():
     assert str(record[1].message) == "Custom warning message"
 
     # Assert that nothing happens if arg1 is set
-    with pytest.warns(None) as record:
+    with pytest.warns() as record:
         # No kwargs
         assert foo(0, 2) == (0, 2, 1)
         assert foo(0, arg1=0) == (0, 0, 1)
@@ -152,7 +152,7 @@ def test_deprecate_kwarg():
 
     # Assert that nothing happens when the function is called with the
     # new API
-    with pytest.warns(None) as record:
+    with pytest.warns() as record:
         # No kwargs
         assert foo(0) == (0, 1, None)
         assert foo(0, 2) == (0, 2, None)

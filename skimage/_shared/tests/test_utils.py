@@ -67,20 +67,15 @@ def test_remove_argument():
 
     assert str(record[0].message) == expected_msg
 
-    # Assert that nothing happens if arg1 is set
-    with pytest.warns() as record:
-        # No kwargs
-        assert foo(0) == (0, 0, 1)
-        assert foo(0, arg2=0) == (0, 0, 0)
+    # No kwargs
+    assert foo(0) == (0, 0, 1)
+    assert foo(0, arg2=0) == (0, 0, 0)
 
-        # Function name and doc is preserved
-        assert foo.__name__ == 'foo'
-        if sys.flags.optimize < 2:
-            # if PYTHONOPTIMIZE is set to 2, docstrings are stripped
-            assert foo.__doc__ == 'Expected docstring'
-
-    # Assert no warning was raised
-    assert not record.list
+    # Function name and doc is preserved
+    assert foo.__name__ == 'foo'
+    if sys.flags.optimize < 2:
+        # if PYTHONOPTIMIZE is set to 2, docstrings are stripped
+        assert foo.__doc__ == 'Expected docstring'
 
 
 def test_change_default_value():
@@ -110,19 +105,16 @@ def test_change_default_value():
     assert str(record[1].message) == "Custom warning message"
 
     # Assert that nothing happens if arg1 is set
-    with pytest.warns() as record:
-        # No kwargs
-        assert foo(0, 2) == (0, 2, 1)
-        assert foo(0, arg1=0) == (0, 0, 1)
 
-        # Function name and doc is preserved
-        assert foo.__name__ == 'foo'
-        if sys.flags.optimize < 2:
-            # if PYTHONOPTIMIZE is set to 2, docstrings are stripped
-            assert foo.__doc__ == 'Expected docstring'
+    # No kwargs
+    assert foo(0, 2) == (0, 2, 1)
+    assert foo(0, arg1=0) == (0, 0, 1)
 
-    # Assert no warning was raised
-    assert not record.list
+    # Function name and doc is preserved
+    assert foo.__name__ == 'foo'
+    if sys.flags.optimize < 2:
+        # if PYTHONOPTIMIZE is set to 2, docstrings are stripped
+        assert foo.__doc__ == 'Expected docstring'
 
 
 def test_deprecate_kwarg():
@@ -152,24 +144,24 @@ def test_deprecate_kwarg():
 
     # Assert that nothing happens when the function is called with the
     # new API
-    with pytest.warns() as record:
-        # No kwargs
-        assert foo(0) == (0, 1, None)
-        assert foo(0, 2) == (0, 2, None)
-        assert foo(0, 1, 2) == (0, 1, 2)
-        # Kwargs without deprecated argument
-        assert foo(0, new_arg1=1, arg2=2) == (0, 1, 2)
-        assert foo(0, new_arg1=2) == (0, 2, None)
-        assert foo(0, arg2=2) == (0, 1, 2)
-        assert foo(0, 1, arg2=2) == (0, 1, 2)
-        # Function name and doc is preserved
-        assert foo.__name__ == 'foo'
-        if sys.flags.optimize < 2:
-            # if PYTHONOPTIMIZE is set to 2, docstrings are stripped
-            if not have_numpydoc:
-                assert foo.__doc__ == """Expected docstring"""
-            else:
-                assert foo.__doc__ == """Expected docstring
+
+    # No kwargs
+    assert foo(0) == (0, 1, None)
+    assert foo(0, 2) == (0, 2, None)
+    assert foo(0, 1, 2) == (0, 1, 2)
+    # Kwargs without deprecated argument
+    assert foo(0, new_arg1=1, arg2=2) == (0, 1, 2)
+    assert foo(0, new_arg1=2) == (0, 2, None)
+    assert foo(0, arg2=2) == (0, 1, 2)
+    assert foo(0, 1, arg2=2) == (0, 1, 2)
+    # Function name and doc is preserved
+    assert foo.__name__ == 'foo'
+    if sys.flags.optimize < 2:
+        # if PYTHONOPTIMIZE is set to 2, docstrings are stripped
+        if not have_numpydoc:
+            assert foo.__doc__ == """Expected docstring"""
+        else:
+            assert foo.__doc__ == """Expected docstring
 
 
     Other Parameters
@@ -179,9 +171,6 @@ def test_deprecate_kwarg():
 
         .. deprecated:: 0.19
 """
-
-    # Assert no warning was raised
-    assert not record.list
 
 
 def test_check_nD():

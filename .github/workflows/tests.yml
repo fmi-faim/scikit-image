@@ -89,7 +89,7 @@ jobs:
             source tools/github/before_install.sh
             set -ex
             python setup.py sdist
-            if [[ $INSTALL_FROM_SDIST != "0" ]]; then
+            if [[ $INSTALL_FROM_SDIST == "1" ]]; then
                 pip uninstall cython -y;
                 pip install dist/scikit-image-*.tar.gz;
             else
@@ -106,6 +106,7 @@ jobs:
             TEST_EXAMPLES: ${{ matrix.TEST_EXAMPLES }}
             OPTIONAL_DEPS: ${{ matrix.OPTIONAL_DEPS }}
             EAGER_IMPORT: ${{ matrix.EAGER_IMPORT }}
+            INSTALL_FROM_SDIST: ${{ matrix.INSTALL_FROM_SDIST }}
             SKIMAGE_TEST_STRICT_WARNINGS_GLOBAL: ${{ matrix.SKIMAGE_TEST_STRICT_WARNINGS_GLOBAL }}
         run: |
             echo $PIP_FLAGS

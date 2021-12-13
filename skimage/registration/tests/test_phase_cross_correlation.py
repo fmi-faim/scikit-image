@@ -132,7 +132,7 @@ def test_wrong_input():
     image = np.ones((5, 5))
     image[0][0] = np.nan
     template = np.ones((5, 5))
-    with expected_warnings(["invalid value encountered in true_divide"]):
+    with expected_warnings(["invalid value encountered in true_divide|\A\Z"]):
         with pytest.raises(ValueError):
             phase_cross_correlation(template, image, return_error=True)
 

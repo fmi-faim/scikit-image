@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fail on non-zero exit and echo the commands
-set -ev
+set -ex
 
 mkdir -p $MPL_DIR
 touch $MPL_DIR/matplotlibrc

@@ -5,6 +5,9 @@ set -evx
 mkdir -p $MPL_DIR
 touch $MPL_DIR/matplotlibrc
 
+echo "EAGER_IMPORT=${EAGER_IMPORT}"
+echo "SKIMAGE_TEST_STRICT_WARNINGS_GLOBAL=${SKIMAGE_TEST_STRICT_WARNINGS_GLOBAL}"
+echo "BUILD_DOCS=${BUILD_DOCS}"
 
 python -m pip list
 tools/build_versions.py

@@ -266,6 +266,13 @@ def setup_test():
             'default', message='Viewer requires ', category=UserWarning
         )
 
+        # ignore warning from cycle_spin about Dask not being installed
+        warnings.filterwarnings(
+            'default',
+            message='The optional dask dependency is not installed.',
+            category=UserWarning
+        )
+
         warnings.filterwarnings(
             'default',
             message='numpy.ufunc size changed',

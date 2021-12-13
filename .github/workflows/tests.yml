@@ -60,10 +60,10 @@ jobs:
           #   WITHOUT_POOCH: 1
           #   BUILD_DOCS: 0
           #   OPTIONS_NAME: "optimize and no pooch"
-          # - platform_id: manylinux_x86_64
-          #   python-version: 3.9
-          #   INSTALL_FROM_SDIST: 1
-          #   OPTIONS_NAME: "install-from-sdist"
+          - platform_id: manylinux_x86_64
+              python-version: 3.9
+              INSTALL_FROM_SDIST: 1
+              OPTIONS_NAME: "install-from-sdist"
 
     steps:
       - name: Checkout scikit-image
@@ -103,6 +103,8 @@ jobs:
             TEST_EXAMPLES: ${{ matrix.TEST_EXAMPLES }}
             OPTIONAL_DEPS: ${{ matrix.OPTIONAL_DEPS }}
             EAGER_IMPORT: ${{ matrix.EAGER_IMPORT }}
+            INSTALL_FROM_SDIST: ${{ matrix.INSTALL_FROM_SDIST }}
+
         run: |
             echo $PIP_FLAGS
             pip install $PIP_FLAGS -r requirements/test.txt --prefer-binary

@@ -9,7 +9,7 @@ touch $MPL_DIR/matplotlibrc
 python -m pip list
 tools/build_versions.py
 
-TEST_ARGS="--doctest-modules --cov=skimage"
+TEST_ARGS="--doctest-modules --cov=skimage -x"
 
 if [[ ${WITHOUT_POOCH} != "0" ]]; then
   # remove pooch (previously installed via requirements/test.txt)

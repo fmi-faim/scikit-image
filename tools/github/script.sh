@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Fail on non-zero exit and echo the commands
 set -ex
+set -o pipefail
+trap 'exit 1' ERR
+
 
 mkdir -p $MPL_DIR
 touch $MPL_DIR/matplotlibrc

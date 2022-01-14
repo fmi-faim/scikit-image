@@ -46,3 +46,27 @@ class Skeletonize3d(object):
 
     def peakmem_skeletonize_3d(self):
         self.skeletonize(self.image)
+
+class Reconstruction(object):
+
+    def setup(self, *args):
+        self.reconstruction = morphology.reconstruction
+
+        x = np.linspace(0, 4 * np.pi)
+        y_mask = np.cos(x)
+
+        y_seed = y_mask.min() * np.ones_like(x)
+        y_seed[0] = 0.5
+        y_seed[-1] = 0
+
+        self.seed = y_seed
+        self.mask = y_mask
+
+    def time_reconstruction(self):
+        self.reconstruction(self.seed, self.mask)
+
+    def peakmem_reference(self, *args):
+        pass
+
+    def peakmem_reconstruction(self):
+        self.reconstruction(self.seed, self.mask)

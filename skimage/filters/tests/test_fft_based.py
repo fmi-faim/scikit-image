@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
@@ -6,6 +8,7 @@ import scipy.fft as fftmodule
 from skimage._shared.utils import _supported_float_type
 from skimage.data import astronaut, coins
 from skimage.filters import butterworth
+from skimage.filters._fft_based import _get_ND_butterworth_filter
 
 
 def _fft_centered(x):
@@ -14,22 +17,58 @@ def _fft_centered(x):
 
 @pytest.mark.parametrize('dtype', [np.float16, np.float32, np.float64,
                                    np.uint8, np.int32])
-def test_butterworth_2D_zeros_dtypes(dtype):
+@pytest.mark.parametrize('true_butterworth', [False, True])
+def test_butterworth_2D_zeros_dtypes(dtype, true_butterworth):
     im = np.zeros((4, 4), dtype=dtype)
-    filtered = butterworth(im)
+    filtered = butterworth(im, true_butterworth=true_butterworth)
     assert filtered.shape == im.shape
     assert filtered.dtype == _supported_float_type(dtype)
     assert_array_equal(im, filtered)
 
 
+@pytest.mark.parametrize('true_butterworth', [False, True])
+@pytest.mark.parametrize('high_pass', [False, True])
+@pytest.mark.parametrize('order', [2, 4, 8])
+def test_butterworth_cutoff(order, high_pass, true_butterworth):
+    cutoff_frequency_ratio=0.25
+    wfilt = _get_ND_butterworth_filter(
+        shape=(512, 512), factor=cutoff_frequency_ratio, order=order,
+        high_pass=high_pass, real=False,
+        true_butterworth=true_butterworth,
+    )
+    # select DC frequence on first axis to plot profile along a single axis
+    wfilt_profile = np.abs(wfilt[0])
+
+    # empirical value that passes for order=2
+    # can use a smaller tolerance at higher orders
+    tol = 0.15 / order
+
+    # should have amplitude of ~1.0 in the center of the passband
+    if high_pass:
+        assert abs(wfilt_profile[wfilt_profile.size // 2] - 1.0) < tol
+    else:
+        assert abs(wfilt_profile[0] - 1.0) < tol
+
+    # should be close to the expected amplitude at the cutoff frequency
+    f_cutoff = int(cutoff_frequency_ratio * wfilt.shape[0])
+    if true_butterworth:
+        # nearly 1/sqrt(2) at the cutoff
+        assert abs(wfilt_profile[f_cutoff] - 1/math.sqrt(2)) < tol
+    else:
+        # nearly 0.5 at the cutoff
+        assert abs(wfilt_profile[f_cutoff] - 0.5) < tol
+
+
 @pytest.mark.parametrize("high_pass", [True, False])
-def test_butterworth_2D(high_pass):
+@pytest.mark.parametrize('true_butterworth', [False, True])
+def test_butterworth_2D(high_pass, true_butterworth):
     # rough check of high-pass vs. low-pass behavior via relative energy
     im = np.random.randn(64, 128)
     filtered = butterworth(
         im,
         cutoff_frequency_ratio=0.20,
         high_pass=high_pass,
+        true_butterworth=true_butterworth,
     )
 
     # Compute the energy at the outer edges of the Fourier domain
@@ -58,14 +97,16 @@ def test_butterworth_2D(high_pass):
 
 @pytest.mark.parametrize("high_pass", [True, False])
 @pytest.mark.parametrize('dtype', [np.float32, np.float64])
-def test_butterworth_2D_realfft(high_pass, dtype):
+@pytest.mark.parametrize('true_butterworth', [False, True])
+def test_butterworth_2D_realfft(high_pass, dtype, true_butterworth):
     """Filtering a real-valued array is equivalent to filtering a
        complex-valued array where the imaginary part is zero.
     """
     im = np.random.randn(32, 64).astype(dtype)
     kwargs = dict(
         cutoff_frequency_ratio=0.20,
-        high_pass=high_pass
+        high_pass=high_pass,
+        true_butterworth=true_butterworth,
     )
 
     expected_dtype = _supported_float_type(im.dtype)

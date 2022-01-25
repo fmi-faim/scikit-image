@@ -7,7 +7,7 @@ from .._shared.utils import _supported_float_type
 
 
 def _get_ND_butterworth_filter(shape, factor, order, high_pass, real,
-                               dtype=np.float64):
+                               dtype=np.float64, true_butterworth=False):
     """Create a N-dimensional Butterworth mask for an FFT
 
     Parameters
@@ -23,6 +23,8 @@ def _get_ND_butterworth_filter(shape, factor, order, high_pass, real,
         low pass (high frequencies are attenuated).
     real : bool
         Whether the FFT is of a real (True) or complex (False) image
+    true_butterworth : bool, optional
+        When False, the square of the Butterworth filter is used.
 
     Returns
     -------
@@ -47,6 +49,8 @@ def _get_ND_butterworth_filter(shape, factor, order, high_pass, real,
     wfilt = 1 / (1 + np.power(q2, order))
     if high_pass:
         wfilt = 1 - wfilt
+    if true_butterworth:
+        np.sqrt(wfilt, out=wfilt)
     return wfilt
 
 
@@ -56,6 +60,7 @@ def butterworth(
     high_pass=True,
     order=2.0,
     channel_axis=None,
+    true_butterworth=False,
 ):
     """Apply a Butterworth filter to enhance high or low frequency features.
 
@@ -77,6 +82,8 @@ def butterworth(
     channel_axis : int, optional
         If there is a channel dimension, provide the index here. If None
         (default) then all axes are assumed to be spatial dimensions.
+    true_butterworth : bool, optional
+        When False, the square of a true Butterworth filter is used.
 
     Returns
     -------
@@ -89,13 +96,17 @@ def butterworth(
     pass filter.
 
     The literature contains multiple conventions for the functional form of
-    the Butterworth filter. Here it is implemented as the n-dimensional form of
+    the Butterworth filter. Here, with the default ``true_butterworth=False``
+    it is implemented as the n-dimensional form of
 
     .. math::
         \\frac{1}{1 - \\left(\\frac{f}{c*f_{max}}\\right)^{2*n}}
 
     with :math:`f` the absolute value of the spatial frequency, :math:`c` the
-    ``cutoff_frequency_ratio`` and :math:`n` the ``order`` modeled after [2]_
+    ``cutoff_frequency_ratio`` and :math:`n` the ``order`` modeled after [2]_.
+
+    If ``true_butterworth=True``, the filter is given by the square root of the
+    above expressions. This corresponds to the definition given in [3]_, [4]_.
 
     Examples
     --------
@@ -111,8 +122,11 @@ def butterworth(
     ----------
     .. [1] Butterworth, Stephen. "On the theory of filter amplifiers."
            Wireless Engineer 7.6 (1930): 536-541.
-    .. [2] Russ, John C., et al. "The image processing handbook."
-           Computers in Physics 8.2 (1994): 177-178.
+    .. [2] Russ, John C., et al. The Image Processing Handbook, 3rd. Ed.
+           1999, CRC Press, LLC.
+    .. [3] https://en.wikipedia.org/wiki/Butterworth_filter
+    .. [4] Birchfield, Stan. Image Processing and Analysis. 2018. Cengage
+           Learning.
 
     """
     fft_shape = (image.shape if channel_axis is None
@@ -121,7 +135,7 @@ def butterworth(
     float_dtype = _supported_float_type(image.dtype, allow_complex=True)
     wfilt = _get_ND_butterworth_filter(
         fft_shape, cutoff_frequency_ratio, order, high_pass, is_real,
-        float_dtype
+        float_dtype, true_butterworth
     )
     axes = np.arange(image.ndim)
     if channel_axis is not None:

@@ -7,7 +7,8 @@ from .._shared.utils import _supported_float_type
 
 
 def _get_ND_butterworth_filter(shape, factor, order, high_pass, real,
-                               dtype=np.float64, true_butterworth=False):
+                               dtype=np.float64, true_butterworth=False,
+                               amplitude_range=(0.0, 1.0)):
     """Create a N-dimensional Butterworth mask for an FFT
 
     Parameters
@@ -25,6 +26,8 @@ def _get_ND_butterworth_filter(shape, factor, order, high_pass, real,
         Whether the FFT is of a real (True) or complex (False) image
     true_butterworth : bool, optional
         When False, the square of the Butterworth filter is used.
+    amplitude_range : 2-tuple of float, optional
+        The Frequency response will have amplitudes in the specified range.
 
     Returns
     -------
@@ -51,6 +54,15 @@ def _get_ND_butterworth_filter(shape, factor, order, high_pass, real,
         wfilt = 1 - wfilt
     if true_butterworth:
         np.sqrt(wfilt, out=wfilt)
+
+    # rescale to desired amplitude range
+    low, high = amplitude_range
+    if low < 0 or high < low:
+        raise ValueError(
+            "Expected 0 <= amplitude_range[0] <= amplitude_range[1].")
+    if not (low == 0.0 and high == 1.0):
+        # adjust range to [low, high]
+        wfilt = low + wfilt * (high - low)
     return wfilt
 
 
@@ -60,7 +72,10 @@ def butterworth(
     high_pass=True,
     order=2.0,
     channel_axis=None,
+    *,
     true_butterworth=False,
+    amplitude_range=(0.0, 1.0),
+    npad=0,
 ):
     """Apply a Butterworth filter to enhance high or low frequency features.
 
@@ -84,6 +99,12 @@ def butterworth(
         (default) then all axes are assumed to be spatial dimensions.
     true_butterworth : bool, optional
         When False, the square of a true Butterworth filter is used.
+    amplitude_range : 2-tuple of float, optional
+        The Frequency response will have amplitudes in the specified range.
+    npad : int, optional
+        Pad each edge of the by `npad` pixels using `numpy.pad`'s
+        ``mode='edge'`` extension. Increase this if boundary artifacts are
+        apparent.
 
     Returns
     -------
@@ -101,25 +122,35 @@ def butterworth(
     which in the lowpass case is given by
 
     .. math::
-        \\frac{1}{1 + \\left(\\frac{f}{c*f_s}\\right)^{2*n}}
+        H(f) = \\frac{1}{1 + \\left(\\frac{f}{c f_s}\\right)^{2n}}
 
     and in the highpass case by
 
     .. math::
-        \\frac{1}{1 + \\left(\\frac{c*f_s}{f}\\right)^{2*n}}
+        H(f) = \\frac{1}{1 + \\left(\\frac{c f_s}{f}\\right)^{2n}}
 
-    with :math:`f` the absolute value of the spatial frequency, :math:`f_{s}`
-    the sampling frequency, :math:`c` the ``cutoff_frequency_ratio``,
-    and :math:`n` the ``order`` modeled after [2]_.
+    with :math:`f=\\sqrt{\\sum_{d=0}^{\\mathrm{ndim}} f_{d}}` the absolute
+    value of the spatial frequency, :math:`f_s` is the sampling frequency,
+    :math:`c` the ``cutoff_frequency_ratio``, and :math:`n` the ``order``
+    modeled after [2]_.
 
     If ``true_butterworth=True``, the filter is given by the square root of the
-    above expressions. This corresponds to the standard Butterworth as defined
+    above expression. This corresponds to the standard Butterworth as defined
     in the signal processing literature [3]_, [4]_.
 
     Note that `cutoff_frequency_ratio` is defined in terms of the sampling
     frequency, :math:`f_s`. The FFT spectrum covers the range
     :math:`[-f_s/2, f_s/2]` so `cutoff_frequency_ratio` should have a value
     between 0 and 0.5.
+
+    When an `amplitude_range`, :math:`(a_{min}, a_{max})` is specified,
+    a modified Butterworth, :math:`H^{\\prime} (f)` is used:
+
+    .. math::
+        H^{\\prime} (f) = a_{min}  + H(f) * (a_{max} - a_{min})
+
+    which has amplitudes in the range :math:`[a_{min}, a_{max}]`
+
 
     Examples
     --------
@@ -142,6 +173,11 @@ def butterworth(
            Learning.
 
     """
+    if npad < 0:
+        raise ValueError("npad must be >= 0")
+    elif npad > 0:
+        center_slice = tuple(slice(npad, s + npad) for s in image.shape)
+        image = np.pad(image, npad, mode='symmetric')
     fft_shape = (image.shape if channel_axis is None
                  else np.delete(image.shape, channel_axis))
     is_real = np.isrealobj(image)
@@ -150,9 +186,12 @@ def butterworth(
         raise ValueError(
             "cutoff_frequency_ratio should be in the range [0, 0.5]"
         )
+
+    if len(amplitude_range) != 2:
+        raise ValueError("amplitude_range must be a pair of values")
     wfilt = _get_ND_butterworth_filter(
         fft_shape, cutoff_frequency_ratio, order, high_pass, is_real,
-        float_dtype, true_butterworth
+        float_dtype, true_butterworth, amplitude_range
     )
     axes = np.arange(image.ndim)
     if channel_axis is not None:
@@ -168,4 +207,6 @@ def butterworth(
     else:
         butterfilt = fft.ifftn(wfilt * fft.fftn(image, axes=axes),
                                s=fft_shape, axes=axes)
+    if npad > 0:
+        butterfilt = butterfilt[center_slice]
     return butterfilt

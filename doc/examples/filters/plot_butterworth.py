@@ -1,7 +1,5 @@
-import numpy as np
-
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
+import numpy as np
 
 from skimage import data, filters
 
@@ -19,9 +17,10 @@ def get_filtered(image, cutoffs, true_butterworth=False, order=3.0, npad=0):
     image : ndarray
         The image to be filtered.
     cutoffs : sequence of int
-        The cutoff frequencies to repeat the filtering at.
+        Both lowpass and highpass filtering will be performed for each cutoff
+        frequency in `cutoffs`.
     true_butterworth : bool, optional
-        Whether the Butterworth filter or its square is used.
+        Whether the traditional Butterworth filter or its square is used.
     order : float, optional
         The order of the Butterworth filter
 
@@ -35,8 +34,6 @@ def get_filtered(image, cutoffs, true_butterworth=False, order=3.0, npad=0):
 
     lowpass_filtered = []
     highpass_filtered = []
-    center_slice = tuple(slice(npad, s + npad) for s in image.shape)
-    image = np.pad(image, npad, mode='edge')
     for cutoff in cutoffs:
         lowpass_filtered.append(
             filters.butterworth(
@@ -44,8 +41,9 @@ def get_filtered(image, cutoffs, true_butterworth=False, order=3.0, npad=0):
                 cutoff_frequency_ratio=cutoff,
                 order=order,
                 high_pass=False,
-                true_butterworth=true_butterworth
-            )[center_slice]
+                true_butterworth=true_butterworth,
+                npad=npad,
+            )
         )
         highpass_filtered.append(
             filters.butterworth(
@@ -53,25 +51,27 @@ def get_filtered(image, cutoffs, true_butterworth=False, order=3.0, npad=0):
                 cutoff_frequency_ratio=cutoff,
                 order=order,
                 high_pass=True,
-                true_butterworth=true_butterworth
-            )[center_slice]
+                true_butterworth=true_butterworth,
+                npad=npad,
+            )
         )
     return lowpass_filtered, highpass_filtered
 
 
 def plot_filtered(lowpass_filtered, highpass_filtered, cutoffs):
-    """Generate plots for a pair of sequences of filtered images."""
+    """Generate plots for paired lists of lowpass and highpass images."""
     fig, axes = plt.subplots(2, 1 + len(cutoffs), figsize=(15, 6))
-    axes[0, 0].imshow(image)
-    axes[0, 0].set_title('original')
+    fontdict = dict(fontsize=14, fontweight='bold')
+
+    axes[0, 0].imshow(image, cmap='gray')
+    axes[0, 0].set_title('original', fontdict=fontdict)
     axes[1, 0].set_axis_off()
 
-    for i in range(len(cutoffs)):
-        axes[0, i + 1].imshow(lowpass_filtered[i])
-        axes[0, i + 1].set_ylabel('lowpass')
-        axes[1, i + 1].imshow(highpass_filtered[i])
-        axes[1, i + 1].set_ylabel('highpass')
-        axes[1, i + 1].set_xlabel(f'cutoff {cutoffs[i]}')
+    for i, c in enumerate(cutoffs):
+        axes[0, i + 1].imshow(lowpass_filtered[i], cmap='gray')
+        axes[0, i + 1].set_title(f'lowpass, c={c}', fontdict=fontdict)
+        axes[1, i + 1].imshow(highpass_filtered[i], cmap='gray')
+        axes[1, i + 1].set_title(f'highpass, c={c}', fontdict=fontdict)
 
     for ax in axes.ravel():
         ax.set_xticks([])
@@ -79,50 +79,41 @@ def plot_filtered(lowpass_filtered, highpass_filtered, cutoffs):
     return fig, axes
 
 
-# adjust default Matplotlib settings for better visibility
-rcParams['image.cmap'] = 'gray'
-rcParams['font.size'] = 14
-rcParams['font.weight'] = 'bold'
-
-# Perform filtering with the squared Butterworth filter
+# Perform filtering with the (squared) Butterworth filter at a range of
+# cutoffs.
 lowpasses, highpasses = get_filtered(image, cutoffs, true_butterworth=False)
 
-# Plot the result at the various cutoff frequencies
 fig, axes = plot_filtered(lowpasses, highpasses, cutoffs)
-fig.text(0.5, 0.95, 'Filtering with squared Butterworth filters (order=3.0)',
-         fontdict=dict(fontsize=18), horizontalalignment='center')
-
-# Perform filtering with the true Butterworth filter
-lowpasses, highpasses = get_filtered(image, cutoffs, true_butterworth=True)
-
-# Plot the result at the various cutoff frequencies. The cutoff for the true
-# filter is more gradual than for the squared one, so the amount of blurring
-# in the lowpass cases are less than with `true_butterworth=False` at the same
-# cutoff and order.
-fig, axes = plot_filtered(lowpasses, highpasses, cutoffs)
-fig.text(0.5, 0.95, 'Filtering with true Butterworth filters (order=3.0)',
-         fontdict=dict(fontsize=18), horizontalalignment='center')
-
+titledict = dict(fontsize=18, fontweight='bold')
+fig.text(0.5, 0.95, '(squared) Butterworth filtering (order=3.0, npad=0)',
+         fontdict=titledict, horizontalalignment='center')
 
 # It can be seen that for lower values of the cutoff, there are artifacts near
 # the edge of the images. This is due to the periodic nature of the DFT and can
 # be reduced by applying some amount of padding to the edges prior to
 # filtering so that there are not sharp eges in the periodic extension of the
-# image.
+# image. This can be done via the ``npad`` argument to ``butterworth``.
 
-# Specifically, we now call our helper function with npad > 0 to
-# 1.) Pad the image by an amount, npad, on all sides.
-# 2.) Filter the padded image.
-# 3.) Crop the edges from the output to restore the original image extent.
-# In get_filtered we use numpy.pad with mode='edge' for smooth extension at the
-# boundary.
-lowpasses, highpasses = get_filtered(image, cutoffs, true_butterworth=True,
+lowpasses, highpasses = get_filtered(image, cutoffs, true_butterworth=False,
                                      npad=64)
+
+fig, axes = plot_filtered(lowpasses, highpasses, cutoffs)
+fig.text(0.5, 0.95, '(squared) Butterworth filtering (order=3.0, npad=64)',
+         fontdict=titledict, horizontalalignment='center')
 
 # Note that with padding, the undesired shading at the image edges is
 # substantially reduced.
+
+# To use the traditional signal processing defintion of the Butterworth filter,
+# set ``true_butterworth=True``. This variaant has an amplitude profile in the
+# frequency domain that is the square root of the the default case with
+# ``true_butterworth=False``. The overall behavior is qualitatively similar.
+
+lowpasses, highpasses = get_filtered(image, cutoffs, true_butterworth=True,
+                                     npad=64)
+
 fig, axes = plot_filtered(lowpasses, highpasses, cutoffs)
-fig.text(0.5, 0.95, 'Butterworth filtering with padded edges',
-         fontdict=dict(fontsize=18), horizontalalignment='center')
+fig.text(0.5, 0.95, 'Butterworth filtering (order=3.0, npad=64)',
+         fontdict=titledict, horizontalalignment='center')
 
 plt.show()

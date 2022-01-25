@@ -28,19 +28,19 @@ def test_butterworth_2D_zeros_dtypes(dtype, true_butterworth):
 
 @pytest.mark.parametrize('true_butterworth', [False, True])
 @pytest.mark.parametrize('high_pass', [False, True])
-@pytest.mark.parametrize('order', [2, 4, 8])
-def test_butterworth_cutoff(order, high_pass, true_butterworth):
-    cutoff_frequency_ratio=0.25
+@pytest.mark.parametrize('order', [3, 4, 8])
+@pytest.mark.parametrize('cutoff', [0.2, 0.3])
+def test_butterworth_cutoff(cutoff, order, high_pass, true_butterworth):
     wfilt = _get_ND_butterworth_filter(
-        shape=(512, 512), factor=cutoff_frequency_ratio, order=order,
+        shape=(512, 512), factor=cutoff, order=order,
         high_pass=high_pass, real=False,
         true_butterworth=true_butterworth,
     )
     # select DC frequence on first axis to plot profile along a single axis
     wfilt_profile = np.abs(wfilt[0])
 
-    # empirical value that passes for order=2
-    # can use a smaller tolerance at higher orders
+    # Empirical value that passes for order=3. Can use a smaller tolerance at
+    # higher orders.
     tol = 0.15 / order
 
     # should have amplitude of ~1.0 in the center of the passband
@@ -50,13 +50,19 @@ def test_butterworth_cutoff(order, high_pass, true_butterworth):
         assert abs(wfilt_profile[0] - 1.0) < tol
 
     # should be close to the expected amplitude at the cutoff frequency
-    f_cutoff = int(cutoff_frequency_ratio * wfilt.shape[0])
+    f_cutoff = int(cutoff * wfilt.shape[0])
     if true_butterworth:
         # nearly 1/sqrt(2) at the cutoff
         assert abs(wfilt_profile[f_cutoff] - 1/math.sqrt(2)) < tol
     else:
         # nearly 0.5 at the cutoff
         assert abs(wfilt_profile[f_cutoff] - 0.5) < tol
+
+
+@pytest.mark.parametrize('cutoff', [-0.01, 0.51])
+def test_butterworth_invalid_cutoff(cutoff):
+    with pytest.raises(ValueError):
+        butterworth(np.ones((4, 4)), cutoff_frequency_ratio=cutoff)
 
 
 @pytest.mark.parametrize("high_pass", [True, False])

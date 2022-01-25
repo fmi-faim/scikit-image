@@ -72,7 +72,7 @@ def butterworth(
         Input image.
     cutoff_frequency_ratio : float, optional
         Determines the position of the cut-off relative to the shape of the
-        FFT.
+        FFT. This should be in the range [0, 0.5].
     high_pass : bool, optional
         Whether to perform a high pass filter. If False, a low pass filter is
         performed.
@@ -97,16 +97,29 @@ def butterworth(
 
     The literature contains multiple conventions for the functional form of
     the Butterworth filter. Here, with the default ``true_butterworth=False``
-    it is implemented as the n-dimensional form of
+    it is implemented as the n-dimensional form of the squared Butterworth
+    which in the lowpass case is given by
 
     .. math::
-        \\frac{1}{1 - \\left(\\frac{f}{c*f_{max}}\\right)^{2*n}}
+        \\frac{1}{1 + \\left(\\frac{f}{c*f_s}\\right)^{2*n}}
 
-    with :math:`f` the absolute value of the spatial frequency, :math:`c` the
-    ``cutoff_frequency_ratio`` and :math:`n` the ``order`` modeled after [2]_.
+    and in the highpass case by
+
+    .. math::
+        \\frac{1}{1 + \\left(\\frac{c*f_s}{f}\\right)^{2*n}}
+
+    with :math:`f` the absolute value of the spatial frequency, :math:`f_{s}`
+    the sampling frequency, :math:`c` the ``cutoff_frequency_ratio``,
+    and :math:`n` the ``order`` modeled after [2]_.
 
     If ``true_butterworth=True``, the filter is given by the square root of the
-    above expressions. This corresponds to the definition given in [3]_, [4]_.
+    above expressions. This corresponds to the standard Butterworth as defined
+    in the signal processing literature [3]_, [4]_.
+
+    Note that `cutoff_frequency_ratio` is defined in terms of the sampling
+    frequency, :math:`f_s`. The FFT spectrum covers the range
+    :math:`[-f_s/2, f_s/2]` so `cutoff_frequency_ratio` should have a value
+    between 0 and 0.5.
 
     Examples
     --------
@@ -133,6 +146,10 @@ def butterworth(
                  else np.delete(image.shape, channel_axis))
     is_real = np.isrealobj(image)
     float_dtype = _supported_float_type(image.dtype, allow_complex=True)
+    if cutoff_frequency_ratio < 0 or cutoff_frequency_ratio > 0.5:
+        raise ValueError(
+            "cutoff_frequency_ratio should be in the range [0, 0.5]"
+        )
     wfilt = _get_ND_butterworth_filter(
         fft_shape, cutoff_frequency_ratio, order, high_pass, is_real,
         float_dtype, true_butterworth
